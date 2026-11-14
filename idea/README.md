@@ -1,4 +1,7 @@
-The story in one line
+## Trust the Box, Not the Agent: Product Catalog x 4Cs Storyline
+
+### The story in one line
+
 We hand one coding agent one real job, "containerize the Product Catalog and get it ready to ship", and watch it succeed at the task while failing every security review. Then we keep the same agent and the same job, and change only the box around it, one C at a time.
 Hero app: dockersamples/catalog-service-node. The audience already knows it from earlier Docker workshops, and it has exactly the moving parts an agent can break:
 • A Node.js REST API that stores products in PostgreSQL
@@ -7,10 +10,13 @@ Hero app: dockersamples/catalog-service-node. The audience already knows it from
 • Product updates published to Kafka
 • Integration tests that use Testcontainers to start Postgres, Kafka and LocalStack
 • Dev tools: pgAdmin on 5050, kafbat on 8080, demo client on 5173
+
 Why this app works for the talk: to do its job, the agent needs a database password, cloud credentials, an inventory API key, a Docker engine for Testcontainers, and network access to npm and Docker Hub. That is the full list of things the "Why not containers?" slide says weakens isolation. The app forces the problem on stage without any staging tricks.
 The tagline that runs through every slide: the agent never gets smarter or more trustworthy. Only the box changes.
 Act 1: The traditional SDLC (about 3 minutes)
+
 In the old loop, a human stood at every gate, so a bad decision got caught by a person before it shipped.
+
 Walk the Product Catalog through the loop the audience knows:
 1.  Plan: a ticket says "ship the catalog service as a container".
 2.  Code: a developer writes the Dockerfile and compose.yaml by hand.
@@ -19,6 +25,7 @@ Walk the Product Catalog through the loop the audience knows:
 5.  Secure: a scan runs, a reviewer reads the PR, a platform team owns the base image.
 6.  Ship: push to the registry, deploy.
 The line to land: speed was limited by humans, and so was the blast radius. One developer, one laptop, a few commits a day, and a reviewer who asks "why is there an AWS key in this Dockerfile?"
+
 Visual idea: the classic SDLC loop with a small person icon at each gate.
 Act 2: The agentic SDLC (about 7 minutes)
 The agent finishes the ticket in minutes, the tests go green, and the result would fail every review the old SDLC had. That is the turn of the story.
