@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The File — one sandbox for the whole team</title>
+<style>
+  :root{
+    --blue:#1D63ED; --blue-ink:#12408f;
+    --green:#0b7268; --green-soft:#e7f0ee; --green-line:#17946e;
+    --ink:#0b0c10; --muted:#5b6472; --faint:#8891a0;
+    --frame:#c3c9d4; --card:#ffffff; --bg:#ffffff; --stage:#f8fafc;
+    --warn:#d23b3b; --warn-bg:#fdf3f3; --warn-line:#e5673a;
+    --ok:#0b7268; --ok-bg:#eafaf1;
+    --chip:#f1f3f6; --chip-ink:#2a313c; --focus:#1D63ED;
+    --shadow:0 1px 2px rgba(10,20,40,.06),0 8px 24px rgba(10,20,40,.06);
+    --radius:14px;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --item:#3d434e; --slot:#aeb8c9;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --ink:#eef1f6; --muted:#9aa4b2; --faint:#6b7483;
+      --frame:#3a4354; --card:#161b24; --bg:#0e1218; --stage:#121722;
+      --green-soft:#12241f; --green:#2fb89f; --green-line:#2fb89f; --ok:#57d6b4; --ok-bg:#12241f;
+      --warn:#ff7a6b; --warn-bg:#2a1714; --warn-line:#ff8a5c;
+      --chip:#1c232e; --chip-ink:#d6dde7; --item:#c3ccd8; --slot:#5b6472;
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  *{box-sizing:border-box}
+  .box-widget{font-family:var(--sans);color:var(--ink);background:var(--bg);max-width:640px;margin:0 auto;
+    border:1px solid var(--frame);border-radius:18px;overflow:hidden;box-shadow:var(--shadow)}
+  .box-widget *:focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:8px}
+  .bx-head{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:14px 18px;border-bottom:1px solid var(--frame);background:var(--card)}
+  .bx-title{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.14em;font-size:14px;color:var(--muted)}
+  .bx-title .dot{width:22px;height:22px;border-radius:7px;background:var(--green-soft);border:2px solid var(--green-line);display:inline-block}
+  .bx-head .links{display:flex;gap:16px}
+  .bx-head button.link{background:none;border:0;color:var(--blue);font:inherit;font-size:14px;font-weight:600;cursor:pointer;padding:4px 2px}
+  .bx-head button.link:hover{text-decoration:underline}
+  .bx-body{padding:18px}
+
+  .bx-seg{display:flex;width:max-content;border:1px solid var(--frame);border-radius:11px;overflow:hidden;margin:0 auto 16px;background:var(--card)}
+  .bx-seg button{font:inherit;font-size:14px;font-weight:700;padding:9px 18px;border:0;background:transparent;color:var(--muted);cursor:pointer}
+  .bx-seg button[aria-pressed=true]{background:var(--blue);color:#fff}
+  .seg-wrap{display:flex;justify-content:center}
+
+  .bx-stage{position:relative;width:100%;max-width:470px;margin:2px auto 0;display:block}
+  .bx-stage svg{width:100%;height:auto;display:block;background:var(--stage);border-radius:var(--radius)}
+  .file-rect{fill:var(--card);stroke:var(--green-line);stroke-width:2.2}
+  .file-corner{fill:var(--green-soft);stroke:var(--green-line);stroke-width:2.2}
+  .file-label{fill:var(--green);font:800 13px var(--sans)}
+  .file-line{fill:var(--item);font:600 12px var(--mono)}
+  .file-key{fill:var(--blue)}
+
+  .laptop .screen{fill:var(--card);stroke:var(--slot);stroke-width:2;stroke-dasharray:4 5}
+  .laptop.filled .screen{stroke:var(--green-line);stroke-dasharray:none}
+  .laptop.drift .screen{stroke:var(--warn-line);stroke-dasharray:none}
+  .laptop .base{fill:var(--slot)}
+  .laptop.filled .base{fill:var(--green-line)} .laptop.drift .base{fill:var(--warn-line)}
+  .laptop text.id{fill:var(--faint);font:700 11px var(--sans);text-anchor:middle}
+  .laptop .spec{opacity:0;font:600 10px var(--mono);text-anchor:middle}
+  .laptop .spec.show{opacity:1;transition:opacity .3s}
+  .laptop.filled .spec{fill:var(--ok)} .laptop.drift .spec{fill:var(--warn)}
+  .laptop.pop .screen{animation:pulse .5s ease}
+
+  .flow{stroke:var(--green-line);stroke-width:2;fill:none;stroke-dasharray:5 5;opacity:0}
+  .flow.go{opacity:1;animation:dash 1s linear}
+
+  .bx-narr{margin:16px 2px 10px;min-height:22px;font-size:16px;color:var(--muted)}
+  .bx-out{border-left:4px solid var(--blue);background:var(--chip);border-radius:0 10px 10px 0;
+    padding:0 16px;max-height:0;opacity:0;overflow:hidden;transition:all .45s cubic-bezier(.22,1,.36,1)}
+  .bx-out.show{max-height:140px;opacity:1;padding:13px 16px}
+  .bx-out.ok{border-left-color:var(--ok);background:var(--ok-bg)}
+  .bx-out.warn{border-left-color:var(--warn-line);background:var(--warn-bg)}
+  .bx-out b{color:var(--ink)}
+  .bx-out .label{font-weight:800;font-size:12px;letter-spacing:.1em;text-transform:uppercase;display:block;margin-bottom:4px}
+  .bx-out.ok .label{color:var(--ok)} .bx-out.warn .label{color:var(--warn)}
+
+  .bx-ask{margin-top:18px}
+  .bx-ask .eyebrow{font:800 12px var(--sans);letter-spacing:.12em;color:var(--faint);text-transform:uppercase;margin-bottom:10px}
+  .chips{display:flex;flex-wrap:wrap;gap:10px}
+  .chip{display:inline-flex;align-items:center;gap:8px;font:600 15px var(--sans);color:var(--chip-ink);
+    background:var(--chip);border:1.5px solid transparent;border-radius:999px;padding:10px 16px;cursor:pointer}
+  .chip:hover{border-color:var(--blue)} .chip[disabled]{opacity:.55;cursor:progress}
+
+  .bx-text{display:none;padding:4px 2px}
+  .bx-widget.textmode .bx-stage,.bx-widget.textmode .bx-narr,.bx-widget.textmode .bx-out,.bx-widget.textmode .seg-wrap{display:none}
+  .bx-widget.textmode .bx-text{display:block}
+  .bx-text h4{margin:14px 0 6px;font-size:15px} .bx-text p{margin:0 0 4px;color:var(--muted);font-size:15px;line-height:1.5}
+
+  @keyframes pulse{0%,100%{transform:scale(1)}40%{transform:scale(1.08)}}
+  @keyframes dash{to{stroke-dashoffset:-20}}
+  @media (prefers-reduced-motion: reduce){ .laptop.pop .screen{animation:none} .flow.go{animation:none;opacity:1} .bx-out{transition:opacity .3s ease} }
+  @media (max-width:420px){ .bx-body{padding:14px} .chips{gap:8px} .chip{font-size:14px;padding:9px 13px} }
+</style>
+</head>
+<body style="margin:0;padding:24px;background:var(--bg,#fff)">
+
+<div class="box-widget bx-widget" id="widget">
+  <div class="bx-head">
+    <div class="bx-title"><span class="dot" aria-hidden="true"></span> THE FILE</div>
+    <div class="links">
+      <button class="link" id="btnReset" type="button">Reset</button>
+      <button class="link" id="btnText" type="button" aria-pressed="false">Text version</button>
+    </div>
+  </div>
+
+  <div class="bx-body">
+    <div class="seg-wrap">
+      <div class="bx-seg" role="group" aria-label="How the team sets up">
+        <button type="button" id="segHand" aria-pressed="true">By hand</button>
+        <button type="button" id="segFile" aria-pressed="false">From the file</button>
+      </div>
+    </div>
+
+    <div class="bx-stage">
+      <svg viewBox="0 0 480 300" role="img" aria-label="An sbxenv.yaml file on the left and four teammates' laptops on the right.">
+        <!-- the file -->
+        <g id="fileCard" transform="translate(20,70)">
+          <path class="file-rect" d="M0 0 H92 L116 24 V170 H0 Z"/>
+          <path class="file-corner" d="M92 0 L116 24 H92 Z"/>
+          <text class="file-label" x="12" y="54">sbxenv.yaml</text>
+          <text class="file-line" x="12" y="76"><tspan class="file-key">agent:</tspan> claude</text>
+          <text class="file-line" x="12" y="94"><tspan class="file-key">kits:</tspan> dhi, snyk</text>
+          <text class="file-line" x="12" y="112"><tspan class="file-key">cpu:</tspan> 4  <tspan class="file-key">mem:</tspan> 8g</text>
+          <text class="file-line" x="12" y="150" style="fill:var(--faint)">in the repo</text>
+        </g>
+
+        <!-- flow lines from file to each laptop -->
+        <path class="flow" id="f0" d="M136 120 C 210 120, 240 70, 300 70"/>
+        <path class="flow" id="f1" d="M136 150 C 230 150, 250 70, 388 70"/>
+        <path class="flow" id="f2" d="M136 160 C 230 180, 250 210, 300 210"/>
+        <path class="flow" id="f3" d="M136 170 C 240 200, 260 210, 388 210"/>
+
+        <!-- four laptops -->
+        <g class="laptop" id="lp0" transform="translate(270,40)">
+          <rect class="screen" x="0" y="0" width="80" height="52" rx="6"/>
+          <path class="base" d="M-8 58 H88 L80 52 H0 Z"/>
+          <text class="id" x="40" y="-6">Laptop A</text>
+          <text class="spec" x="40" y="24">—</text>
+        </g>
+        <g class="laptop" id="lp1" transform="translate(358,40)">
+          <rect class="screen" x="0" y="0" width="80" height="52" rx="6"/>
+          <path class="base" d="M-8 58 H88 L80 52 H0 Z"/>
+          <text class="id" x="40" y="-6">Laptop B</text>
+          <text class="spec" x="40" y="24">—</text>
+        </g>
+        <g class="laptop" id="lp2" transform="translate(270,180)">
+          <rect class="screen" x="0" y="0" width="80" height="52" rx="6"/>
+          <path class="base" d="M-8 58 H88 L80 52 H0 Z"/>
+          <text class="id" x="40" y="-6">Laptop C</text>
+          <text class="spec" x="40" y="24">—</text>
+        </g>
+        <g class="laptop" id="lp3" transform="translate(358,180)">
+          <rect class="screen" x="0" y="0" width="80" height="52" rx="6"/>
+          <path class="base" d="M-8 58 H88 L80 52 H0 Z"/>
+          <text class="id" x="40" y="-6">Laptop D</text>
+          <text class="spec" x="40" y="24">—</text>
+        </g>
+      </svg>
+    </div>
+
+    <p class="bx-narr" id="narr">Four teammates, four laptops. How does everyone get the same box?</p>
+    <div class="bx-out" id="outcome" role="status"><span class="label" id="outLabel"></span><span id="outText"></span></div>
+    <div class="bx-text" id="textVersion"></div>
+
+    <div class="bx-ask">
+      <div class="eyebrow">Set up the team…</div>
+      <div class="chips" id="chips"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const widget=$('widget'), narr=$('narr'), outcome=$('outcome'), outLabel=$('outLabel'), outText=$('outText'), chipsWrap=$('chips');
+  const reduce=window.matchMedia('(prefers-reduced-motion: reduce)');
+  let mode='hand', busy=false;
+  const LAPS=['lp0','lp1','lp2','lp3'];
+  // by hand → drift: each laptop a bit different
+  const DRIFT=['claude·snyk','claude','codex·snyk','claude·snyk²'];
+  const SAME='claude·dhi·snyk·4c';
+
+  function wait(ms){ return new Promise(r=>setTimeout(r, reduce.matches?Math.min(ms,100):ms)); }
+  function clearOutcome(){ outcome.className='bx-out'; outLabel.textContent=''; outText.textContent=''; }
+  function showOutcome(kind,text){ outcome.className='bx-out show '+kind; outLabel.textContent=(kind==='warn'?'Drift':'Reproducible'); outText.innerHTML=text; }
+
+  function clearLaptops(){
+    LAPS.forEach(id=>{ const g=$(id); g.classList.remove('filled','drift','pop'); const s=g.querySelector('.spec'); s.classList.remove('show'); s.textContent='—'; });
+    ['f0','f1','f2','f3'].forEach(f=>$(f).classList.remove('go'));
+  }
+
+  function setMode(m){
+    mode=m;
+    $('segHand').setAttribute('aria-pressed', m==='hand');
+    $('segFile').setAttribute('aria-pressed', m==='file');
+    clearLaptops(); clearOutcome();
+    narr.textContent = m==='file'
+      ? 'One file in the repo. Everyone runs the same command against it.'
+      : 'Four teammates, four laptops. Everyone sets it up their own way.';
+  }
+
+  async function run(){
+    if(busy) return; busy=true;
+    chipsWrap.querySelectorAll('.chip').forEach(c=>c.disabled=true);
+    clearLaptops(); clearOutcome();
+    narr.textContent = mode==='file' ? 'sbx env run — reading sbxenv.yaml on every machine…' : 'Everyone installs by hand…';
+    for(let i=0;i<LAPS.length;i++){
+      const g=$(LAPS[i]); const spec=g.querySelector('.spec');
+      if(mode==='file'){ $('f'+i).classList.add('go'); await wait(260); g.classList.add('filled'); spec.textContent=SAME; }
+      else { g.classList.add('drift'); spec.textContent=DRIFT[i]; }
+      g.classList.add('pop'); spec.classList.add('show');
+      await wait(mode==='file'?260:200);
+    }
+    await wait(300);
+    if(mode==='file') showOutcome('ok','Four identical boxes from one file. A kit change is a pull request. <b>Row 7 closed.</b>');
+    else showOutcome('warn','Six laptops, six setups — different kits, different policies. <b>Row 7 is open.</b>');
+    chipsWrap.querySelectorAll('.chip').forEach(c=>c.disabled=false);
+    busy=false;
+  }
+
+  (function(){ const b=document.createElement('button'); b.className='chip'; b.type='button';
+    b.textContent='Start the four sandboxes'; b.addEventListener('click',run); chipsWrap.appendChild(b); })();
+
+  (function buildText(){
+    $('textVersion').innerHTML='<h4>By hand — every setup drifts</h4>'+
+      '<p>Four laptops end up with different kits and policies: '+DRIFT.join(', ')+'. Six laptops, six risk profiles. Row 7 open.</p>'+
+      '<h4>From the file — every box matches</h4>'+
+      '<p>One sbxenv.yaml in the repo. Everyone runs <b>sbx env run</b> and gets the same box ('+SAME+'). A kit change is a pull request. Row 7 closed.</p>';
+  })();
+
+  $('segHand').addEventListener('click',()=>!busy&&setMode('hand'));
+  $('segFile').addEventListener('click',()=>!busy&&setMode('file'));
+  $('btnReset').addEventListener('click',()=>!busy&&setMode(mode));
+  const btnText=$('btnText');
+  btnText.addEventListener('click',()=>{ const on=widget.classList.toggle('textmode'); btnText.setAttribute('aria-pressed',on); btnText.textContent=on?'Picture version':'Text version'; });
+
+  setMode('hand');
+})();
+</script>
+</body>
+</html>

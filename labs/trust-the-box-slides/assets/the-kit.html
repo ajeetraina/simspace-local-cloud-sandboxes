@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Kit — choose what goes in the box</title>
+<style>
+  :root{
+    --blue:#1D63ED; --blue-ink:#12408f;
+    --green:#0b7268; --green-soft:#e7f0ee; --green-line:#17946e;
+    --ink:#0b0c10; --muted:#5b6472; --faint:#8891a0;
+    --frame:#c3c9d4; --card:#ffffff; --bg:#ffffff; --stage:#f8fafc;
+    --warn:#d23b3b; --warn-bg:#fdf3f3; --warn-line:#e5673a;
+    --ok:#0b7268; --ok-bg:#eafaf1;
+    --chip:#f1f3f6; --chip-ink:#2a313c; --focus:#1D63ED;
+    --shadow:0 1px 2px rgba(10,20,40,.06),0 8px 24px rgba(10,20,40,.06);
+    --radius:14px;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --robot:#1D63ED; --robot-dk:#12408f; --robot-face:#0a1830;
+    --item:#3d434e; --wall-ripple:#17946e; --slot:#aeb8c9;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --ink:#eef1f6; --muted:#9aa4b2; --faint:#6b7483;
+      --frame:#3a4354; --card:#161b24; --bg:#0e1218; --stage:#121722;
+      --green-soft:#12241f; --green:#2fb89f; --green-line:#2fb89f; --ok:#57d6b4; --ok-bg:#12241f;
+      --warn:#ff7a6b; --warn-bg:#2a1714; --warn-line:#ff8a5c;
+      --chip:#1c232e; --chip-ink:#d6dde7;
+      --robot:#4f86ff; --robot-dk:#2a5fd0; --robot-face:#06101f; --item:#c3ccd8; --slot:#5b6472;
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  *{box-sizing:border-box}
+  .box-widget{font-family:var(--sans);color:var(--ink);background:var(--bg);max-width:640px;margin:0 auto;
+    border:1px solid var(--frame);border-radius:18px;overflow:hidden;box-shadow:var(--shadow)}
+  .box-widget *:focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:8px}
+
+  .bx-head{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:14px 18px;border-bottom:1px solid var(--frame);background:var(--card)}
+  .bx-title{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.14em;font-size:14px;color:var(--muted)}
+  .bx-title .dot{width:22px;height:22px;border-radius:7px;background:var(--green-soft);border:2px solid var(--green-line);display:inline-block}
+  .bx-head .links{display:flex;gap:16px}
+  .bx-head button.link{background:none;border:0;color:var(--blue);font:inherit;font-size:14px;font-weight:600;cursor:pointer;padding:4px 2px}
+  .bx-head button.link:hover{text-decoration:underline}
+
+  .bx-body{padding:18px}
+
+  .bx-stage{position:relative;width:100%;max-width:460px;margin:2px auto 0;display:block}
+  .bx-stage svg{width:100%;height:auto;display:block;background:var(--stage);border-radius:var(--radius)}
+  .frame-label{fill:var(--muted);font:700 15px var(--sans);letter-spacing:.04em}
+  .sandbox-rect{fill:var(--green-soft);stroke:var(--green);stroke-width:3.5}
+  .sandbox-label{fill:var(--green);font:800 16px var(--sans)}
+
+  /* tool slots + tools */
+  .slot{fill:none;stroke:var(--slot);stroke-width:2;stroke-dasharray:4 5;rx:10}
+  .slot-label{fill:var(--faint);font:600 12px var(--sans);text-anchor:middle}
+  .tool{opacity:0;transition:opacity .2s}
+  .tool.in{opacity:1}
+  .tool rect.pad{fill:var(--card);stroke:var(--green-line);stroke-width:2}
+  .tool .glyph{fill:none;stroke:var(--green);stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}
+  .tool text{fill:var(--item);font:600 12px var(--sans);text-anchor:middle}
+  .tool.dock{animation:dock .6s cubic-bezier(.22,1,.36,1)}
+
+  /* flying tool */
+  #flier{opacity:0}
+  #flier.go{opacity:1;transition:transform .66s cubic-bezier(.22,1,.36,1)}
+
+  /* base image plate */
+  .base{fill:var(--card);stroke:var(--frame);stroke-width:1.6}
+  .base-from{fill:var(--ink);font:700 14px var(--mono)}
+  .base-meta{fill:var(--warn);font:800 13px var(--sans)}
+  .base-meta.ok{fill:var(--ok)}
+  .base.hard{stroke:var(--green-line)}
+  .plate.flash{animation:pulse .6s ease}
+
+  .item.pulse{animation:pulse .6s ease}
+
+  /* agent robot */
+  #agent .bob{transform-box:fill-box;transform-origin:center;animation:breathe 3.6s ease-in-out infinite}
+  #agent .eye{transform-box:fill-box;transform-origin:center;animation:blink 4.2s infinite}
+  .robot-head{fill:var(--robot);stroke:var(--robot-dk);stroke-width:1.4}
+  .robot-screen{fill:var(--robot-face)} .robot-eye{fill:#eaf1ff}
+  .robot-body{fill:var(--robot-dk)} .robot-arm{fill:var(--robot)} .robot-foot{fill:var(--robot-dk)}
+  .robot-antenna{stroke:var(--robot-dk);stroke-width:2.5} .robot-ball{fill:var(--robot)}
+
+  .bx-narr{margin:16px 2px 10px;min-height:22px;font-size:16px;color:var(--muted)}
+  .bx-out{border-left:4px solid var(--blue);background:var(--chip);border-radius:0 10px 10px 0;
+    padding:0 16px;max-height:0;opacity:0;overflow:hidden;transition:all .45s cubic-bezier(.22,1,.36,1)}
+  .bx-out.show{max-height:140px;opacity:1;padding:13px 16px}
+  .bx-out.ok{border-left-color:var(--ok);background:var(--ok-bg)}
+  .bx-out b{color:var(--ink)}
+  .bx-out .label{font-weight:800;font-size:12px;letter-spacing:.1em;text-transform:uppercase;display:block;margin-bottom:4px;color:var(--ok)}
+
+  .bx-ask{margin-top:18px}
+  .bx-ask .eyebrow{font:800 12px var(--sans);letter-spacing:.12em;color:var(--faint);text-transform:uppercase;margin-bottom:10px}
+  .chips{display:flex;flex-wrap:wrap;gap:10px}
+  .chip{display:inline-flex;align-items:center;gap:8px;font:600 15px var(--sans);color:var(--chip-ink);
+    background:var(--chip);border:1.5px solid transparent;border-radius:999px;padding:10px 16px;cursor:pointer}
+  .chip:hover{border-color:var(--blue)}
+  .chip[disabled]{opacity:.55;cursor:progress}
+  .chip.done{color:var(--ok)}
+  .chip .tick{width:18px;height:18px;border-radius:50%;background:var(--green);color:#fff;display:none;
+    align-items:center;justify-content:center;font-size:12px;font-weight:800}
+  .chip.done .tick{display:inline-flex}
+
+  .bx-text{display:none;padding:4px 2px}
+  .bx-widget.textmode .bx-stage,.bx-widget.textmode .bx-narr,.bx-widget.textmode .bx-out{display:none}
+  .bx-widget.textmode .bx-text{display:block}
+  .bx-text h4{margin:14px 0 6px;font-size:15px}
+  .bx-text p{margin:0 0 4px;color:var(--muted);font-size:15px;line-height:1.5}
+
+  @keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
+  @keyframes blink{0%,94%,100%{transform:scaleY(1)}97%{transform:scaleY(.1)}}
+  @keyframes pulse{0%,100%{transform:scale(1)}40%{transform:scale(1.14)}}
+  @keyframes dock{0%{transform:scale(.6);opacity:.4}60%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
+
+  @media (prefers-reduced-motion: reduce){
+    #agent .bob,#agent .eye{animation:none !important}
+    #flier.go{transition:opacity .2s ease}
+    .tool.dock,.item.pulse,.plate.flash{animation:none}
+    .bx-out{transition:opacity .3s ease}
+  }
+  @media (max-width:420px){ .bx-body{padding:14px} .chips{gap:8px} .chip{font-size:14px;padding:9px 13px} }
+</style>
+</head>
+<body style="margin:0;padding:24px;background:var(--bg,#fff)">
+
+<div class="box-widget bx-widget" id="widget">
+  <div class="bx-head">
+    <div class="bx-title"><span class="dot" aria-hidden="true"></span> THE KIT</div>
+    <div class="links">
+      <button class="link" id="btnReset" type="button">Reset</button>
+      <button class="link" id="btnText" type="button" aria-pressed="false">Text version</button>
+    </div>
+  </div>
+
+  <div class="bx-body">
+    <div class="bx-stage">
+      <svg viewBox="0 0 480 320" role="img" aria-label="A sandbox with empty tool slots, a shelf of kits, and the base image at the bottom.">
+        <text class="frame-label" x="20" y="26">Kits</text>
+
+        <!-- the sandbox -->
+        <rect class="sandbox-rect" x="14" y="40" width="300" height="264" rx="14"/>
+        <text class="sandbox-label" x="30" y="66">Your sandbox</text>
+
+        <!-- agent -->
+        <g id="agent" transform="translate(70,150)">
+          <g class="bob">
+            <line class="robot-antenna" x1="0" y1="-30" x2="0" y2="-39"/>
+            <rect class="robot-ball" x="-3.5" y="-45" width="7" height="7" rx="1.6"/>
+            <rect class="robot-foot" x="-12" y="5" width="9" height="15" rx="3"/>
+            <rect class="robot-foot" x="3" y="5" width="9" height="15" rx="3"/>
+            <rect class="robot-head" x="-20" y="-31" width="40" height="40" rx="9"/>
+            <rect class="robot-screen" x="-15" y="-24" width="30" height="18" rx="3.5"/>
+            <rect class="robot-eye eye" x="-9" y="-18.5" width="6" height="6" rx="1.4"/>
+            <rect class="robot-eye eye" x="3" y="-18.5" width="6" height="6" rx="1.4"/>
+          </g>
+        </g>
+
+        <!-- tool slots (filled as kits are added) -->
+        <g id="slotNode"><rect class="slot" x="150" y="78" width="150" height="40"/><text class="slot-label" x="225" y="103">agent kit</text></g>
+        <g id="slotPg"><rect class="slot" x="150" y="128" width="150" height="40"/><text class="slot-label" x="225" y="153">mixin</text></g>
+        <g id="slotScout"><rect class="slot" x="150" y="178" width="150" height="40"/><text class="slot-label" x="225" y="203">mixin</text></g>
+
+        <!-- docked tools (hidden until added) -->
+        <g class="tool" id="toolNode" transform="translate(150,78)">
+          <rect class="pad" x="0" y="0" width="150" height="40" rx="10"/>
+          <g class="glyph" transform="translate(22,20) scale(0.8)"><path d="M0 -10 L9 -5 V5 L0 10 L-9 5 V-5 Z"/></g>
+          <text x="86" y="25">Node dev</text>
+        </g>
+        <g class="tool" id="toolPg" transform="translate(150,128)">
+          <rect class="pad" x="0" y="0" width="150" height="40" rx="10"/>
+          <g class="glyph" transform="translate(22,20) scale(0.8)"><ellipse cx="0" cy="-7" rx="9" ry="3.4"/><path d="M-9 -7 V7 a9 3.4 0 0 0 18 0 V-7"/></g>
+          <text x="90" y="25">Postgres</text>
+        </g>
+        <g class="tool" id="toolScout" transform="translate(150,178)">
+          <rect class="pad" x="0" y="0" width="150" height="40" rx="10"/>
+          <g class="glyph" transform="translate(22,20) scale(0.8)"><circle cx="-2" cy="-2" r="7"/><path d="M3 3 L10 10"/></g>
+          <text x="92" y="25">Scout</text>
+        </g>
+
+        <!-- base image plate -->
+        <g id="plate" class="plate">
+          <rect class="base" id="baseRect" x="26" y="240" width="276" height="48" rx="10"/>
+          <text class="base-from" id="baseFrom" x="40" y="262">FROM node:20</text>
+          <text class="base-meta" id="baseMeta" x="40" y="280">8 High CVEs · 431 packages · root</text>
+        </g>
+
+        <!-- shelf (kits waiting outside) -->
+        <text class="slot-label" x="400" y="54" style="font-weight:800;letter-spacing:.08em">ON THE HUB</text>
+        <g class="item" id="shelf" transform="translate(340,66)">
+          <rect x="0" y="0" width="120" height="150" rx="12" fill="none" stroke="var(--frame)" stroke-width="1.5" stroke-dasharray="4 6"/>
+        </g>
+
+        <!-- flying tool (reused for the dock animation) -->
+        <g id="flier" transform="translate(360,90)">
+          <rect x="0" y="0" width="100" height="34" rx="9" fill="var(--card)" stroke="var(--blue)" stroke-width="2"/>
+          <text id="flierText" x="50" y="22" text-anchor="middle" fill="var(--blue)" font="700 13px var(--sans)">kit</text>
+        </g>
+      </svg>
+    </div>
+
+    <p class="bx-narr" id="narr">A locked box is safe — but empty. Add exactly the tools this job needs. The microVM and proxy never move.</p>
+    <div class="bx-out" id="outcome" role="status"><span class="label" id="outLabel"></span><span id="outText"></span></div>
+    <div class="bx-text" id="textVersion"></div>
+
+    <div class="bx-ask">
+      <div class="eyebrow">Configure the inside…</div>
+      <div class="chips" id="chips"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const widget=$('widget'), narr=$('narr'), outcome=$('outcome'), outLabel=$('outLabel'), outText=$('outText');
+  const chipsWrap=$('chips'), flier=$('flier'), flierText=$('flierText');
+  const reduce=window.matchMedia('(prefers-reduced-motion: reduce)');
+  let busy=false, hardened=false;
+
+  // target slot centres for the flier (top-left of each tool group)
+  const TOOLS={
+    node:{tool:'toolNode', slot:'slotNode', x:150,y:78,  label:'Node dev', name:'Node dev kit'},
+    pg:{tool:'toolPg',   slot:'slotPg',   x:150,y:128, label:'Postgres', name:'Postgres client'},
+    scout:{tool:'toolScout', slot:'slotScout', x:150,y:178, label:'Scout', name:'Docker Scout'},
+  };
+
+  const TASKS=[
+    {id:'node',  label:'Add the agent kit (Claude Code)'},
+    {id:'pg',    label:'Add a Postgres client'},
+    {id:'scout', label:'Add Docker Scout'},
+    {id:'harden',label:'Harden the base image'},
+  ];
+  const OUT={
+    node:'The agent harness is in the box. One agent kit per sandbox — swap it any time.',
+    pg:'A Postgres client, added as a mixin. Stack as many as the job needs.',
+    scout:'Docker Scout is in the box. Now the agent can scan what it builds.',
+    harden:'node:20 → a hardened, distroless base. <b>8 High CVEs → 0</b>, 431 → 78 packages. The microVM and proxy never moved.',
+  };
+
+  function wait(ms){ return new Promise(r=>setTimeout(r, reduce.matches?Math.min(ms,120):ms)); }
+  function fire(el,cls){ el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+  function showOutcome(text){
+    outcome.className='bx-out show ok'; outLabel.textContent='Inside the box'; outText.innerHTML=text;
+  }
+  function clearOutcome(){ outcome.className='bx-out'; outLabel.textContent=''; outText.textContent=''; }
+
+  async function addTool(id){
+    const t=TOOLS[id];
+    flierText.textContent=t.label;
+    flier.setAttribute('transform','translate(360,90)');
+    flier.classList.add('go'); void flier.offsetWidth;
+    await wait(20);
+    flier.setAttribute('transform',`translate(${t.x},${t.y+3})`);
+    await wait(680);
+    flier.classList.remove('go'); flier.style.opacity=0;
+    $(t.slot).style.opacity=0;
+    const tool=$(t.tool); tool.classList.add('in'); fire(tool,'dock');
+    await wait(360);
+  }
+
+  async function harden(){
+    fire($('plate'),'flash');
+    await wait(300);
+    $('baseFrom').textContent='FROM dhi/node:hardened';
+    $('baseMeta').textContent='0 High CVEs · 78 packages · non-root';
+    $('baseMeta').classList.add('ok');
+    $('baseRect').classList.add('hard');
+    await wait(300);
+  }
+
+  async function runTask(id){
+    if(busy) return; busy=true;
+    chipsWrap.querySelectorAll('.chip').forEach(c=>c.disabled=true);
+    clearOutcome();
+    if(id==='harden'){ narr.textContent='Swapping the base image the agent chose for a hardened one.'; await harden(); hardened=true; }
+    else { narr.textContent='Adding a kit from the Hub — it clicks into the box.'; await addTool(id); }
+    showOutcome(OUT[id]);
+    const c=chipsWrap.querySelector(`[data-task="${id}"]`); if(c) c.classList.add('done');
+    await wait(500);
+    chipsWrap.querySelectorAll('.chip').forEach(c=>c.disabled=false);
+    busy=false;
+  }
+
+  function reset(){
+    if(busy) return;
+    ['toolNode','toolPg','toolScout'].forEach(t=>{$(t).classList.remove('in','dock');});
+    ['slotNode','slotPg','slotScout'].forEach(s=>{$(s).style.opacity=1;});
+    $('baseFrom').textContent='FROM node:20';
+    $('baseMeta').textContent='8 High CVEs · 431 packages · root';
+    $('baseMeta').classList.remove('ok'); $('baseRect').classList.remove('hard');
+    flier.style.opacity=0; hardened=false;
+    chipsWrap.querySelectorAll('.chip').forEach(c=>{c.classList.remove('done');c.disabled=false;});
+    clearOutcome();
+    narr.textContent='A locked box is safe — but empty. Add exactly the tools this job needs. The microVM and proxy never move.';
+  }
+
+  TASKS.forEach(t=>{
+    const b=document.createElement('button');
+    b.className='chip'; b.type='button'; b.dataset.task=t.id;
+    b.innerHTML=`<span class="tick" aria-hidden="true">✓</span>${t.label}`;
+    b.addEventListener('click',()=>runTask(t.id));
+    chipsWrap.appendChild(b);
+  });
+
+  (function buildText(){
+    const tv=$('textVersion');
+    tv.innerHTML='<h4>Choice — configure the inside, not the boundary</h4>'+
+      TASKS.map(t=>`<p><b>${t.label}:</b> ${OUT[t.id].replace(/<[^>]+>/g,'')}</p>`).join('')+
+      '<p>The microVM and the proxy are fixed. Only what runs inside changes.</p>';
+  })();
+
+  $('btnReset').addEventListener('click',reset);
+  const btnText=$('btnText');
+  btnText.addEventListener('click',()=>{
+    const on=widget.classList.toggle('textmode');
+    btnText.setAttribute('aria-pressed',on);
+    btnText.textContent = on ? 'Picture version' : 'Text version';
+  });
+})();
+</script>
+</body>
+</html>
