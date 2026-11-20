@@ -1,21 +1,21 @@
-# "Trust the box, not the agent" — the 30-minute talk deck, authored natively in
-# Simspace (not image slides): dark Docker theme for the narrative, with the
-# interactive widgets (the-box / the-door / the-kit / the-file) carrying the four
-# C demos. Pairs with the five hands-on labs (Contain → Coordinate).
+# "Trust the box, not the agent" — the talk deck, image-driven from the New
+# Docker Theme PowerPoint: 56 full-bleed slides (assets/slide-01..56.webp) with
+# the presenter's speaker notes carried across. Live "Demo time!" slides mark
+# where the presenter switches to a terminal. Pairs with the hands-on labs
+# (Contain → Coordinate).
 kind: slides
 title: "Trust the box, not the agent"
 description: >
-  One coding agent, one real job — only the box around it changes. A 30-minute
-  talk: the agentic SDLC turns one prompt into seven problems on the Product
-  Catalog, then the four C's of Docker Sandboxes — Contain, Control, Choice,
-  Capacity — close them one by one, each with a live, interactive demo. Watch the
-  talk, then do the labs.
+  One coding agent, one real job — only the box around it changes. The agentic
+  workflow turns one prompt into a bigger blast radius on the Product Catalog,
+  then the four C's of Docker Sandboxes — Contain, Control, Choice, Capacity —
+  close it, each with a live demo. Watch the talk, then do the labs.
 
 catalog:
   icon: slideshow
   order: 1
   tags: ["sandboxes", "sbx", "agents", "security", "4cs", "slides", "start here"]
-  estimatedMinutes: 30
+  estimatedMinutes: 40
 
 version: "1.0.0"
 
