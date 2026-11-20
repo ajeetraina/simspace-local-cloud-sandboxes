@@ -1,0 +1,493 @@
+version: "2.0"
+
+metadata:
+  id: harden-the-box
+  title: "Harden the Box"
+  summary: >
+    Box the Product Catalog agent end to end with real sbx commands: spin the
+    sandbox up locally (sbx run) and in the cloud (launch.sh / sbx --cloud run),
+    add a network policy, pin the filesystem with read-only mounts, author a Cedar
+    authorization policy, lock the MCP surface with --static-mcp, read the audit
+    log, then capture everything in an sbxenv.yaml. All simulated.
+
+# State flips as each control goes on. First-match-wins, top to bottom, so the
+# "configured" variants are listed ABOVE their defaults.
+state:
+  org: "your-org"
+  box:
+    created: false
+  policy:
+    configured: false
+  authz:
+    configured: false
+  mcp:
+    added: false
+    authorized: false
+
+settings:
+  pace:
+    boot: 900 # simulated microVM boot
+    pull: 600 # simulated layer / catalog fetch
+    sync: 450 # simulated proxy / control-plane round trip
+    scan: 1000 # simulated policy evaluation
+
+defaults:
+  unmatched:
+    stderr: ["command not found - this command isn't part of the lab."]
+    exit: 1
+
+scenarios:
+  - id: sbx-version
+    when:
+      command: [sbx, version]
+    then:
+      output:
+        - "Docker Sandboxes (sbx) 0.48.0"
+        - "sandboxd: running"
+
+  # ===========================================================================
+  # Section 1 - Spin up the box. The `sbx run claude` variants are ordered
+  # MOST-SPECIFIC FIRST (static-mcp, then read-only mounts, then --name), because
+  # first-match-wins and the bare `sbx run claude` below would otherwise shadow
+  # them. The static-mcp run belongs to Section 5; the mounts run to Section 3;
+  # they live up here so they out-rank the catch-all.
+  # ===========================================================================
+  - id: sbx-run-static-mcp
+    when:
+      command: [sbx, run, claude]
+      args: { --static-mcp: { any: true } }
+    then:
+      state: { box.created: true }
+      output:
+        - { text: "Creating sandbox 'catalog' (agent: claude, static MCP: {{ args.static-mcp }})...", delay: boot }
+        - "  ✓ {{ args.static-mcp }} locked into the agent's one MCP gateway at creation"
+        - ""
+        - "--static-mcp fixes the MCP set at boot. The agent talks to exactly this server,"
+        - "and the set can't drift after the box starts. Cedar Mcp::call rules apply on top."
+
+  - id: sbx-run-mounts
+    when:
+      command: [sbx, run, claude]
+      args: { 1: { oneOf: ["~/shared-libs:ro", "~/design-docs:ro"] } }
+    then:
+      state: { box.created: true }
+      output:
+        - { text: "Creating sandbox 'catalog' (agent: claude)...", delay: boot }
+        - "  primary workspace   ~/catalog-service-node     (read-write)"
+        - "  mount               ~/shared-libs:ro           (read-only)"
+        - "  mount               ~/design-docs:ro           (read-only)"
+        - ""
+        - "Everything OUTSIDE these mounts is invisible to the box. The host root is"
+        - "read-only; the agent writes only inside the primary workspace."
+
+  - id: sbx-run-named
+    when:
+      command: [sbx, run, claude]
+      args: { --name: { any: true } }
+    then:
+      state: { box.created: true }
+      output:
+        - { text: "Creating sandbox '{{ args.name }}' (agent: claude)...", delay: boot }
+        - "  ✓ microVM booted through the proxy; host filesystem is read-only"
+        - "  ✓ isolated Docker daemon; no access to your host Docker"
+        - ""
+        - "The Product Catalog is mounted at ~/catalog-service-node. The agent has sudo"
+        - "INSIDE the box by design - the hypervisor boundary is the control, not in-VM root."
+
+  - id: sbx-run-claude
+    when:
+      command: [sbx, run, claude]
+    then:
+      state: { box.created: true }
+      output:
+        - { text: "Creating sandbox 'claude' (agent: claude)...", delay: boot }
+        - "  ✓ microVM booted through the proxy; host filesystem is read-only"
+        - ""
+        - "Tip: name it with --name catalog so the later steps can target it."
+
+  - id: sbx-run-codex
+    when:
+      command: [sbx, run, codex]
+    then:
+      state: { box.created: true }
+      output:
+        - { text: "Creating sandbox 'codex' (agent: codex)...", delay: boot }
+        - "  ✓ microVM booted through the proxy; host filesystem is read-only"
+        - "  note: codex needs an OpenAI key (sbx secret set -g openai) - no OAuth fallback."
+        - ""
+        - "Tip: name it with --name catalog so the later steps can target it."
+
+  # ---- Cloud flow: the launch.sh wrapper and raw `sbx --cloud ...` -----------
+  - id: launch-script
+    when:
+      command: ["./launch.sh"]
+    then:
+      state: { box.created: true }
+      output:
+        - "==> Checking cloud sandbox access"
+        - { text: "==> Creating cloud sandbox 'catalog' (claude, small, ttl 4h)", delay: boot }
+        - "  ✓ microVM booted in Docker Cloud through the proxy; host is read-only"
+        - ""
+        - "Claude needs an Anthropic credential. Store one so the proxy injects it:"
+        - "  sbx --cloud secret set anthropic --oauth"
+        - ""
+        - "Attach to the agent session:  sbx --cloud attach catalog"
+        - "Tear it down later:           ./teardown.sh"
+
+  - id: sbx-cloud-run
+    when:
+      command: [sbx, --cloud, run]
+    then:
+      state: { box.created: true }
+      output:
+        - { text: "Creating cloud sandbox 'catalog' (agent: claude, ttl 4h)...", delay: boot }
+        - "  ✓ microVM booted in Docker Cloud through the proxy; host is read-only"
+        - "  ✓ no credentials inside the box - the proxy brokers them per request"
+        - ""
+        - "Same box as `sbx run`, running in Docker Cloud instead of on your machine."
+        - "Attach with: sbx --cloud attach catalog"
+
+  - id: sbx-cloud-secret
+    when:
+      command: [sbx, --cloud, secret, set]
+    then:
+      output:
+        - "Stored credential in the host keychain (cloud profile)."
+        - "The proxy injects it into outbound API calls - the raw value never enters the box."
+
+  - id: sbx-cloud-attach
+    when:
+      command: [sbx, --cloud, attach]
+    then:
+      output:
+        - "Attaching to 'catalog'...  (Ctrl-b d to detach)"
+        - "claude ready in the cloud box. Workspace: ~/catalog-service-node"
+
+  - id: teardown-script
+    when:
+      command: ["./teardown.sh"]
+    then:
+      state: { box.created: false }
+      output:
+        - "==> Deleting cloud sandbox 'catalog'"
+        - "  ✓ gone. The workspace on your host is untouched."
+
+  - id: sbx-ls-created
+    when:
+      command: [sbx, ls]
+      state: { box.created: true }
+    then:
+      output:
+        - "NAME       AGENT    STATUS    WORKSPACE"
+        - "catalog     claude   running   ~/catalog-service-node"
+
+  - id: sbx-ls
+    when:
+      command: [sbx, ls]
+    then:
+      output:
+        - "No sandboxes yet. Create one with: sbx run claude --name catalog ."
+
+  # ===========================================================================
+  # Section 2 - Network policy. Default is balanced; allow the registries the
+  # build needs, deny the exfil host. Deny beats allow, always.
+  # ===========================================================================
+  - id: sbx-policy-allow
+    when:
+      command: [sbx, policy, allow, network]
+      args: { 0: { any: true } }
+    then:
+      state: { policy.configured: true }
+      output:
+        - "✓ allow network {{ args.0 }}"
+        - "  added to the local policy for 'catalog'. Applies to all outbound HTTP/HTTPS."
+
+  - id: sbx-policy-deny
+    when:
+      command: [sbx, policy, deny, network]
+      args: { 0: { any: true } }
+    then:
+      state: { policy.configured: true }
+      output:
+        - "✓ deny network {{ args.0 }}"
+        - "  deny beats allow - if this host also matches an allow rule, it stays blocked."
+
+  - id: sbx-policy-check-denied
+    when:
+      command: [sbx, policy, check, network]
+      args: { 0: { oneOf: [evil.example.com, pastebin.com, "*.evil.example.com"] } }
+    then:
+      output:
+        - { text: "Denied: {{ args.0 }}", delay: scan }
+        - "Reason: matched an explicit deny rule; deny beats allow."
+
+  - id: sbx-policy-check
+    when:
+      command: [sbx, policy, check, network]
+      args: { 0: { any: true } }
+    then:
+      output:
+        - { text: "Allowed: {{ args.0 }}", delay: scan }
+        - "Reason: matched an allow rule on the balanced policy."
+
+  - id: sbx-policy-ls-configured
+    when:
+      command: [sbx, policy, ls]
+      state: { policy.configured: true }
+    then:
+      output:
+        - "POLICY: balanced (deny-by-default + common dev sites)"
+        - ""
+        - "ACTION   TYPE      HOST"
+        - "allow    network   registry.npmjs.org"
+        - "allow    network   *.pypi.org,files.pythonhosted.org"
+        - "deny     network   evil.example.com"
+
+  - id: sbx-policy-ls
+    when:
+      command: [sbx, policy, ls]
+    then:
+      output:
+        - "POLICY: balanced (deny-by-default + common dev sites)"
+        - "No custom rules yet. Add one with: sbx policy allow network <host>"
+
+  - id: sbx-policy-log
+    when:
+      command: [sbx, policy, log]
+    then:
+      output:
+        - "POLICY LOG - network decisions"
+        - "  allow   registry.npmjs.org      (allow rule)"
+        - "  allow   *.pypi.org              (allow rule)"
+        - "  DENY    evil.example.com        (deny rule - deny beats allow)"
+        - "  DENY    169.254.169.254         (balanced default - metadata endpoint blocked)"
+
+  # ===========================================================================
+  # Section 3 - Filesystem. `sbx exec catalog mount` shows what the box can see;
+  # the read-only mounted run is up in the Section-1 block (sbx-run-mounts).
+  # ===========================================================================
+  - id: sbx-exec-mounts
+    when:
+      command: [sbx, exec]
+      args: { 1: mount }
+    then:
+      output:
+        - "catalog-service-node  on  /home/agent/catalog-service-node  type virtiofs (rw)"
+        - "shared-libs           on  /home/agent/shared-libs           type virtiofs (ro)"
+        - "design-docs           on  /home/agent/design-docs           type virtiofs (ro)"
+        - "The host's / is not here. The box only sees what you mounted."
+
+  # ===========================================================================
+  # Section 4 - Cedar authorization policy. authz.cedar is seeded; the learner
+  # reads it, applies it, then tests a permitted and a forbidden action.
+  # ===========================================================================
+  - id: sbx-authz-set
+    when:
+      command: [sbx, policy, authz, set]
+      args: { 0: { any: true } }
+    then:
+      state: { authz.configured: true }
+      output:
+        - { text: "Parsing Cedar policy {{ args.0 }}...", delay: scan }
+        - "  ✓ 3 policies loaded (2 permit, 1 forbid)"
+        - ""
+        - "Cedar now authorizes every agent action in 'catalog': shell commands, file"
+        - "writes, and MCP tool calls are checked against these rules before they run."
+
+  - id: sbx-authz-test-forbidden
+    when:
+      command: [sbx, policy, authz, test]
+      args: { 0: { oneOf: [".env", "id_rsa", "secret.pem"] } }
+    then:
+      output:
+        - { text: "Decision: DENY", delay: scan }
+        - "  action:    File::\"read\""
+        - "  resource:  {{ args.0 }}"
+        - "  policy:    forbid(principal, action, resource) when resource in Secrets;"
+        - "The agent cannot read {{ args.0 }} - the Cedar forbid rule wins."
+
+  - id: sbx-authz-test
+    when:
+      command: [sbx, policy, authz, test]
+      args: { 0: { any: true } }
+    then:
+      output:
+        - { text: "Decision: ALLOW", delay: scan }
+        - "  resource:  {{ args.0 }}"
+        - "  policy:    permit(principal, action in [Shell, File::write], resource in Workspace);"
+        - "Permitted - the action is inside the workspace and matches a permit rule."
+
+  - id: sbx-authz-ls-configured
+    when:
+      command: [sbx, policy, authz, ls]
+      state: { authz.configured: true }
+    then:
+      output:
+        - "Cedar authorization: ON  (authz.cedar, 3 policies)"
+        - "  permit  agent -> Shell, File::write        in Workspace"
+        - "  permit  agent -> Mcp::call                 in StaticMcp"
+        - "  forbid  agent -> File::read                in Secrets   (.env, *.pem, id_*)"
+
+  - id: sbx-authz-ls
+    when:
+      command: [sbx, policy, authz, ls]
+    then:
+      output:
+        - "Cedar authorization: OFF"
+        - "Author a policy and apply it with: sbx policy authz set authz.cedar"
+
+  # ===========================================================================
+  # Section 5 - MCP surface. Add the catalog tools server, authorize it centrally,
+  # then lock the box to it with --static-mcp (that run is in the Section-1 block).
+  # ===========================================================================
+  - id: sbx-mcp-add
+    when:
+      command: [sbx, mcp, add]
+      args: { 0: { any: true }, --url: { any: true } }
+    then:
+      state: { mcp.added: true }
+      output:
+        - "Added MCP server '{{ args.0 }}' (remote) -> {{ args.url }}"
+        - "  transport: streamable-http"
+        - "  registered, not yet attached. Authorize it, then run with --static-mcp."
+
+  - id: sbx-mcp-auth
+    when:
+      command: [sbx, mcp, auth]
+      args: { 0: { any: true } }
+    then:
+      state: { mcp.authorized: true }
+      output:
+        - { text: "Authorizing '{{ args.0 }}' through the hosted MCP control plane...", delay: sync }
+        - "  OAuth complete. The credential is held centrally - never written into the box."
+        - ""
+        - "Authorized. Lock it into the box with: sbx run claude --static-mcp {{ args.0 }} ."
+
+  - id: sbx-mcp-ls-added
+    when:
+      command: [sbx, mcp, ls]
+      state: { mcp.added: true }
+    then:
+      output:
+        - "NAME            TYPE     URL"
+        - "catalog-tools   remote   https://tools.{{ org }}.dev/mcp"
+        - ""
+        - "1 MCP server configured."
+
+  - id: sbx-mcp-ls
+    when:
+      command: [sbx, mcp, ls]
+    then:
+      output:
+        - "No MCP servers configured. Add one with: sbx mcp add <name> --url <url>"
+
+  # ===========================================================================
+  # Section 6 - Audit log. The full action audit: network, file writes, MCP
+  # calls, and Cedar decisions, one timeline. (sbx policy log is in Section 2.)
+  # ===========================================================================
+  - id: sbx-audit-ls
+    when:
+      command: [sbx, audit]
+      args: { 0: { oneOf: [ls, log] } }
+    then:
+      output:
+        - "AUDIT - catalog  (newest last)"
+        - "  10:02:14  net     allow   registry.npmjs.org        npm ci"
+        - "  10:02:17  net     DENY    evil.example.com          blocked by deny rule"
+        - "  10:02:31  file    allow   write src/routes/products.js"
+        - "  10:02:44  authz   DENY    read .env                 Cedar forbid (Secrets)"
+        - "  10:03:02  mcp     allow   catalog-tools__list_skus  static MCP + Cedar permit"
+        - ""
+        - "Every outbound request, file write, and tool call - with the policy that decided it."
+
+  # ===========================================================================
+  # Section 7 - sbxenv.yaml. Plan (dry run), then reproduce the whole hardened
+  # box with one command - every control from the earlier sections, declared once.
+  # ===========================================================================
+  - id: sbx-env-plan
+    when:
+      command: [sbx, env, plan]
+    then:
+      output:
+        - "── PLAN  (dry run - nothing created)"
+        - "  + sandbox        catalog            claude, workspace ."
+        - "  + policy         3 network rules"
+        - "  + authz          authz.cedar (3 Cedar policies)"
+        - "  + mcp            catalog-tools (static)"
+        - "  + secret         dhi-mcp-pat  <- op://Engineering/DockerHub/pat"
+        - ""
+        - "Apply with: sbx env run"
+
+  - id: sbx-env-run
+    when:
+      command: [sbx, env, run]
+    then:
+      state: { box.created: true, policy.configured: true, authz.configured: true, mcp.added: true, mcp.authorized: true }
+      output:
+        - "── LOAD ENVIRONMENT  (sbxenv.yaml)"
+        - { text: "  agent: claude   workspace: .   kits: 1", delay: sync }
+        - { text: "  ✓ network policy applied (allow registries, deny exfil hosts)", delay: scan }
+        - { text: "  ✓ Cedar authorization loaded (authz.cedar)", delay: scan }
+        - { text: "  ✓ MCP server catalog-tools registered + authorized (central)", delay: sync }
+        - { text: "  ✓ secret dhi-mcp-pat resolved from op:// on THIS host (never committed)", delay: sync }
+        - { text: "── BOOT  Creating sandbox 'catalog'...", delay: boot }
+        - "  ✓ microVM up; Product Catalog mounted at ~/catalog-service-node"
+        - ""
+        - "The whole hardened box - policy, filesystem, Cedar, MCP - from one file."
+        - "A teammate runs `sbx env run` and gets the identical box."
+
+  # ===========================================================================
+  # Agent sessions + filler.
+  # ===========================================================================
+  - id: claude-session
+    when:
+      command: [claude]
+    then:
+      session:
+        prompt: "claude> "
+        intro:
+          - "Claude Code ready in the box. Enter a task, or type /exit to leave."
+        outro:
+          - "Claude session ended."
+
+  - id: agent-blocked-secret
+    when:
+      agent: true
+      promptContains: [".env"]
+      state: { authz.configured: true }
+    then:
+      output:
+        - "● I tried to read .env for the DB password, but the box stopped me:"
+        - "    authz DENY  File::read .env  (Cedar forbid rule: Secrets)"
+        - "● I'll use the brokered connection instead - the proxy holds the real secret."
+
+  - id: agent-fallback
+    when:
+      agent: true
+    then:
+      output:
+        - "● Working inside the box. Network, filesystem, and tool calls are all"
+        - "  governed - I can only reach what the policy and Cedar rules allow."
+
+  - id: cd
+    when:
+      command: [cd]
+    then:
+      output:
+        - "Note: this simulated terminal has no working directory - every command runs from the lab root."
+
+  - id: sbx-policy-generic
+    when:
+      command: [sbx, policy]
+    then:
+      output:
+        - "sbx policy governs what the box can reach and do. Try `sbx policy allow network"
+        - "  <host>`, `sbx policy ls`, `sbx policy authz set <file>`, or `sbx policy log`."
+
+  - id: sbx-mcp-generic
+    when:
+      command: [sbx, mcp]
+    then:
+      output:
+        - "sbx mcp manages the tool servers your agent can use. Try `sbx mcp add <name>"
+        - "  --url <url>`, `sbx mcp ls`, or `sbx mcp auth <name>`."
