@@ -106,13 +106,15 @@ Note: And this isn't the future. It's already in your pipeline. Agents pull depe
 
 <img src="assets/slide-14.webp" alt="The ungoverned agent — on your host with full permissions it picks FROM node:20 with 6 High CVEs, 431 packages, no SBOM, root user" width="1600" height="900" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:fill" />
 
+Note: Here's what that looks like with no guardrails. The agent on your host, full permissions, asked to containerize the app. It reaches for the first base image it's ever seen — FROM node:20 — and ships it. Look at the scorecard: six High CVEs, 431 packages it pulled in without asking, no SBOM so nobody can tell what's actually in there, and it's running as root. Nothing here is malicious. The agent did exactly what you asked. It just had no reason to pick anything better, and nothing stopping it. Hold that scorecard in your head — six Highs, 431 packages, root — because we're going to run this exact prompt again later inside a sandbox and compare.
+
 ---
 
 <!-- chrome: false -->
 
 <img src="assets/slide-15.webp" alt="Demo time! — the agent containerising the app" width="1600" height="900" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:fill" />
 
-Note: Run the docker/ai-reviewer project
+Note: Demo time. Cue: on the host, no sandbox. Prompt the agent to containerize the Product Catalog. Let it write the Dockerfile and build. Then scan the image and read the scorecard out loud — FROM node:20, the High CVEs, the package count, running as root. Don't fix anything yet. The point is to show the default, ungoverned result so we can beat it later.
 
 ---
 
@@ -136,11 +138,15 @@ Note: Okay. Some of you are already thinking: we're at a Docker talk, just put t
 
 <img src="assets/slide-18.webp" alt="Container vs sandbox: whose kernel? — ordinary containers share the host kernel; a Docker Sandbox gets its own Linux kernel in a microVM, so sudo inside is not admin on your Mac" width="1600" height="900" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:fill" />
 
+Note: Here's the difference that matters most, and it comes down to one question: whose kernel? An ordinary container shares the host's kernel. There's one kernel, and everyone — your Mac, every container — is talking to it. A Docker Sandbox is a microVM: it boots its own Linux kernel, completely separate from yours. Why do you care? Because it changes what "root" means. Root inside a container is a short step from root on your host — same kernel, so a kernel-level escape lands on your machine. Root inside the sandbox is root on a throwaway Linux VM that has no path to your Mac. So the agent can sudo all it likes in there, and "admin" inside the box is simply not admin on your laptop.
+
 ---
 
 <!-- chrome: false -->
 
 <img src="assets/slide-19.webp" alt="Why not put the agent in a container and restrict it in a boundary? — the Docker socket mount is the catch: it hands the container back the keys to the host" width="1600" height="900" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:fill" />
+
+Note: So the obvious move is: put the agent in a container, lock it down, draw a nice boundary around it. And that almost works — right up until the agent needs to build or run containers itself, which coding agents do constantly. To let it do that, you mount the Docker socket in. And that one mount quietly hands the keys back. Anything that can talk to the Docker socket can start a new container with the whole host mounted inside it — so the "restricted" container can reach straight past its own boundary to your filesystem. The boundary's still drawn on the slide; it just doesn't hold. Let me show you how fast that goes.
 
 ---
 
@@ -148,7 +154,7 @@ Note: Okay. Some of you are already thinking: we're at a Docker talk, just put t
 
 <img src="assets/slide-20.webp" alt="Demo time! — escaping a container" width="1600" height="900" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:fill" />
 
-Note: Run the docker/ai-reviewer project
+Note: Demo time. Cue: start a container with the Docker socket mounted — the setup everyone reaches for. From inside it, launch a second container with the host root filesystem bind-mounted. Now read a file off the host — something that was supposed to be outside the boundary. That's the escape: no exploit, no CVE, just the socket doing exactly what it's designed to do. Land the line: the container didn't fail, it was never a boundary in the first place.
 
 ---
 
@@ -188,6 +194,8 @@ Note: We'll organize the rest of the talk around four pillars. Contain is the bo
 
 <img src="assets/slide-25.webp" alt="A sandbox gives you four things — the wall, what it reaches, what's inside, and sharing it: Contain, Control, Choice, Capacity" width="1600" height="900" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:fill" />
 
+Note: Same four pillars, said in plain English so they stick. Contain is the wall — the part the agent can't push through. Control is what it's allowed to reach through that wall. Choice is what you put inside with it. And Capacity is how you give that exact same box to everyone else. Wall, reach, inside, sharing. If the four C's don't land, those four words will. Let's take them one at a time.
+
 ---
 
 <!-- chrome: false -->
@@ -218,7 +226,7 @@ Note: Let's zoom into that credential bit, because it's honestly my favorite par
 
 <img src="assets/slide-29.webp" alt="Demo time! — testing the boundaries" width="1600" height="900" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:fill" />
 
-Note: Run the docker/ai-reviewer project
+Note: Demo time — let's poke the three boundaries from inside the sandbox. Cue one, the microVM: try to reach a file on the host, or check the kernel, and show there's nothing of yours in there. Cue two, the proxy: curl something the policy doesn't allow and watch it get refused. Cue three, credential injection: show the agent has no key in its environment, then make a call to an allowed API and watch it succeed anyway — the proxy added the key on the way out. Walls, front desk, keys — all three, live.
 
 ---
 
@@ -290,7 +298,7 @@ Note: And this is where it gets fun, because it's really just mix and match. Pic
 
 <img src="assets/slide-38.webp" alt="Agents talking to an MCP server — external tool servers the agent calls through one governed gateway" width="1600" height="900" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:fill" />
 
-Note: external tool servers the agent calls through one governed gateway
+Note: Quick word on how the agent actually uses outside tools, because this sets up the next few slides. The things we keep calling "tools" — a database, GitHub, Stripe, a browser, a hardened-image lookup — the agent reaches through MCP servers. And the key design choice is that the agent doesn't connect to each of those servers itself. It talks to one governed gateway, and the gateway talks to the servers. One door in, one place to apply policy. Keep that single-door picture in mind; everything in the Choice demos runs through it.
 
 ---
 
@@ -330,11 +338,15 @@ Note: The one idea everything hangs onThe agent never talks to those tool-server
 
 <img src="assets/slide-43.webp" alt="Point it at a real gateway, nothing else works — a local gateway versus a hosted control plane; fail-closed by design, policy authored in Docker Hub" width="1600" height="900" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:fill" />
 
+Note: There are two ways to stand up that gateway. A local gateway you run yourself, right next to the sandbox — great for trying this out on your own machine. Or a hosted control plane, where the policy lives centrally and every sandbox in the org points at it. Either way, the important property is the same: it's fail-closed. If the agent isn't pointed at a real gateway, nothing works — tool calls don't fall back to some open path, they just fail. That's deliberate. You can't accidentally end up ungoverned. And the policy itself isn't buried in config on someone's laptop; it's authored in Docker Hub, so there's one place that decides what's allowed.
+
 ---
 
 <!-- chrome: false -->
 
 <img src="assets/slide-44.webp" alt="Default-deny allow-list over (server, tool), authored in Cedar — author once, sync everywhere; calls the org policy doesn't permit are denied and audited" width="1600" height="900" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:fill" />
+
+Note: And here's what that policy actually says. It's a default-deny allow-list, and the thing being allowed isn't a whole server — it's a specific tool on a specific server. So you're not saying "GitHub is allowed," you're saying "the create-pull-request tool on the GitHub server is allowed, nothing else." It's written in Cedar, the same policy language AWS uses for authorization, so it's a real grammar, not a pile of if-statements. You author it once and it syncs everywhere. And anything the policy doesn't explicitly permit is both denied and audited — so you get the block and the record of the attempt. Allow-list, per tool, written once, enforced everywhere.
 
 ---
 
@@ -350,13 +362,15 @@ Note: All about runbook….It's the operations guide for one feature: letting an
 
 <img src="assets/slide-46.webp" alt="Same agent, same prompt — a 0-CVE base: ungoverned picks FROM node:20 (2C 12H 20M 13L); with the DHI MCP it queries first and picks dhi.io/node:24-debian13 (0 CVEs, signed)" width="1600" height="900" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:fill" />
 
+Note: This is the payoff slide — the before and after, side by side, same agent, same prompt. On the left, the ungoverned run from earlier: FROM node:20, two Critical, twelve High, twenty Medium, thirteen Low. On the right, the same agent with the DHI MCP server available. Before it writes a single FROM line, it asks the server for a hardened base and gets back dhi.io/node:24-debian13 — zero CVEs, signed, with an SBOM. Nothing about the agent changed. We didn't write a better prompt or add a linter. We just gave it a better tool to reach for, behind the governed gateway, and the result went from forty-seven vulnerabilities to zero. That's the whole argument for Choice in one picture.
+
 ---
 
 <!-- chrome: false -->
 
 <img src="assets/slide-47.webp" alt="Demo time! — running kits from Docker Hub" width="1600" height="900" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:fill" />
 
-Note: Run the docker/ai-reviewer project
+Note: Demo time — filling the box with kits. Cue: start a sandbox with an agent kit plus a mixin or two pulled straight from Docker Hub — the DHI MCP kit is the one to show here. Point out that the agent came from one kit and the tooling from another, stacked on top, no custom image built. Then re-run the containerize prompt and show the agent reaching for the hardened base through the gateway — the zero-CVE result from the previous slide, live. Land it: same boundary, we just chose what went inside.
 
 ---
 
@@ -412,7 +426,7 @@ Note: Quick peek at what's coming. Right now your sandbox runs on your laptop, s
 
 <img src="assets/slide-54.webp" alt="Demo time! — sharing a sandbox with a team" width="1600" height="900" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:fill" />
 
-Note: Run the docker/ai-reviewer project
+Note: Demo time — the team story. Cue: open the sbxenv.yaml in the repo and walk the four lines — agent, workspace, kits, resources. Run sbx env run, let it print the plan, approve it, and you're inside the exact box we've been building all talk. Then make the point land: this file is committed, so the person next to you runs the same command and gets the same sandbox — same agent, same kits, same policy. If you have it, change a kit version in the file to show that updating once updates everyone. One file, one command, everybody matches.
 
 ---
 
