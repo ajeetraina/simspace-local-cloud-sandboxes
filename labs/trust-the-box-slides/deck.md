@@ -58,6 +58,91 @@ Note: Here's what makes an agent an agent. It plans, it acts, it looks at what h
 
 <img src="assets/slide-08.webp" alt="A Product Catalog sample demo — a Catalog Service with Postgres, AWS S3, Kafka, an inventory service and other external services" width="1600" height="900" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:fill" />
 
+<!-- Credential keys: a gold key pops in on each trust boundary the catalog
+     crosses, so the "every box is a secret you have to trust" point lands
+     visually. Same overlay as the containerdays securing-the-agentic-stack-slides
+     deck, re-tuned to THIS image's box/arrow coordinates (read off a 1600x900
+     grid traced on slide-08.webp — the diagram sits ~10-20px off that deck). -->
+<svg viewBox="0 0 1600 900" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2">
+  <defs>
+    <filter id="keyShadow" x="-60%" y="-60%" width="220%" height="220%">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#000" flood-opacity="0.45"/>
+    </filter>
+    <g id="credKey" filter="url(#keyShadow)">
+      <circle cx="-18" cy="0" r="13" fill="none" stroke="#3a2c00" stroke-width="9"/>
+      <circle cx="-18" cy="0" r="13" fill="none" stroke="#F4B400" stroke-width="5.5"/>
+      <line x1="-7" y1="0" x2="26" y2="0" stroke="#3a2c00" stroke-width="12" stroke-linecap="round"/>
+      <line x1="-7" y1="0" x2="26" y2="0" stroke="#F4B400" stroke-width="7" stroke-linecap="round"/>
+      <line x1="15" y1="0" x2="15" y2="10" stroke="#F4B400" stroke-width="6" stroke-linecap="round"/>
+      <line x1="24" y1="0" x2="24" y2="12" stroke="#F4B400" stroke-width="6" stroke-linecap="round"/>
+    </g>
+  </defs>
+  <style>
+    .credLabel { font-family: Inter, Helvetica, Arial, sans-serif; font-size: 21px; font-weight: 800;
+      fill: #c0141c; stroke: #fff; stroke-width: 4px; paint-order: stroke; text-anchor: middle; }
+  </style>
+
+  <!-- Database password : Application -> PostgreSQL -->
+  <g transform="translate(765,382)">
+    <g opacity="0">
+      <animate attributeName="opacity" from="0" to="1" begin="0.2s" dur="0.3s" fill="freeze"/>
+      <g>
+        <animateTransform attributeName="transform" type="scale" from="0.2" to="0.7" begin="0.2s" dur="0.4s" fill="freeze"/>
+        <g>
+          <animateTransform attributeName="transform" type="scale" values="1;1.15;1" dur="1.8s" begin="0.6s" repeatCount="indefinite"/>
+          <use href="#credKey"/>
+        </g>
+      </g>
+      <text class="credLabel" y="44">DB password</text>
+    </g>
+  </g>
+
+  <!-- AWS keys : Application -> AWS S3 -->
+  <g transform="translate(765,488)">
+    <g opacity="0">
+      <animate attributeName="opacity" from="0" to="1" begin="0.7s" dur="0.3s" fill="freeze"/>
+      <g>
+        <animateTransform attributeName="transform" type="scale" from="0.2" to="0.7" begin="0.7s" dur="0.4s" fill="freeze"/>
+        <g>
+          <animateTransform attributeName="transform" type="scale" values="1;1.15;1" dur="1.8s" begin="1.1s" repeatCount="indefinite"/>
+          <use href="#credKey"/>
+        </g>
+      </g>
+      <text class="credLabel" y="44">AWS keys</text>
+    </g>
+  </g>
+
+  <!-- Stripe key : Kafka -> Other service(s) -->
+  <g transform="translate(920,600)">
+    <g opacity="0">
+      <animate attributeName="opacity" from="0" to="1" begin="1.2s" dur="0.3s" fill="freeze"/>
+      <g>
+        <animateTransform attributeName="transform" type="scale" from="0.2" to="0.7" begin="1.2s" dur="0.4s" fill="freeze"/>
+        <g>
+          <animateTransform attributeName="transform" type="scale" values="1;1.15;1" dur="1.8s" begin="1.6s" repeatCount="indefinite"/>
+          <use href="#credKey"/>
+        </g>
+      </g>
+      <text class="credLabel" y="44">Stripe key</text>
+    </g>
+  </g>
+
+  <!-- Internal API key : Catalog -> Inventory service -->
+  <g transform="translate(1040,300)">
+    <g opacity="0">
+      <animate attributeName="opacity" from="0" to="1" begin="1.7s" dur="0.3s" fill="freeze"/>
+      <g>
+        <animateTransform attributeName="transform" type="scale" from="0.2" to="0.7" begin="1.7s" dur="0.4s" fill="freeze"/>
+        <g>
+          <animateTransform attributeName="transform" type="scale" values="1;1.15;1" dur="1.8s" begin="2.1s" repeatCount="indefinite"/>
+          <use href="#credKey"/>
+        </g>
+      </g>
+      <text class="credLabel" y="-30">internal API key</text>
+    </g>
+  </g>
+</svg>
+
 Note: So this is the app we'll be securing all the way down that dev-to-prod road. It's a Product Catalog service, and it's deliberately realistic rather than a toy. In the middle you've got the catalog-service application, and it's not living alone: it writes product data to PostgreSQL, pushes product images to AWS S3, and publishes product updates through Kafka. Reaching outside its own boundary, it talks to an Inventory service and other downstream services. The point I want you to take away is that this is a real supply chain of moving parts - every one of those boxes is something we eventually have to trust and prove. Before we talk about how to fix any of it, I want you to feel it yourself - so let's try.
 
 ---
@@ -72,7 +157,7 @@ Note: Here's the world we grew up in - the traditional workflow. A human writes,
 
 <!-- chrome: false -->
 
-<img src="assets/slide-10.webp" alt="The agentic workflow — now an agent sits at every stage, so the attack surface is no longer just what you pull" width="1600" height="900" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:fill" />
+<svg data-anim="slide-10" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;"><defs><radialGradient id="halo10" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#26ae60" stop-opacity="0.55"/><stop offset="55%" stop-color="#26ae60" stop-opacity="0.16"/><stop offset="100%" stop-color="#26ae60" stop-opacity="0"/></radialGradient><marker id="arrow10" markerWidth="12" markerHeight="12" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#193363"/></marker><path id="innerOrbit10" d="M 555,380 A 160,160 0 1,1 555,700 A 160,160 0 1,1 555,380" fill="none"/><path id="outerOrbit10" d="M 1088,325 A 210,210 0 1,1 1088,745 A 210,210 0 1,1 1088,325" fill="none"/></defs><rect x="0" y="0" width="1600" height="900" fill="#ffffff"/><text x="95" y="150" font-family="'Inter Variable', Inter, Helvetica, Arial, sans-serif" font-size="64" font-weight="800" fill="#0a0c10">The Agentic Workflow</text><text x="97" y="222" font-family="'Inter Variable', Inter, Helvetica, Arial, sans-serif" font-size="33" fill="#585858">Now an agent sits at <tspan font-weight="800">every</tspan> stage &#8212; the attack surface is no longer just</text><text x="97" y="266" font-family="'Inter Variable', Inter, Helvetica, Arial, sans-serif" font-size="33" fill="#585858">what you pull.</text><circle cx="555" cy="540" r="160" fill="none" stroke="#193363" stroke-opacity="0.12" stroke-width="2" stroke-dasharray="2 14" stroke-linecap="round"><animateTransform attributeName="transform" type="rotate" from="0 555 540" to="360 555 540" dur="26s" repeatCount="indefinite"/></circle><circle cx="1088" cy="535" r="210" fill="none" stroke="#193363" stroke-opacity="0.12" stroke-width="2" stroke-dasharray="2 14" stroke-linecap="round"><animateTransform attributeName="transform" type="rotate" from="0 1088 535" to="-360 1088 535" dur="34s" repeatCount="indefinite"/></circle><circle cx="555" cy="540" r="140" fill="#ffffff" stroke="#193363" stroke-width="7"/><circle cx="1088" cy="535" r="188" fill="#ffffff" stroke="#193363" stroke-width="7"/><text x="555" y="526" font-family="'Inter Variable', Inter, Helvetica, Arial, sans-serif" font-size="40" fill="#0a0c10" text-anchor="middle">Inner</text><text x="555" y="570" font-family="'Inter Variable', Inter, Helvetica, Arial, sans-serif" font-size="40" fill="#0a0c10" text-anchor="middle">Loop</text><text x="1088" y="521" font-family="'Inter Variable', Inter, Helvetica, Arial, sans-serif" font-size="44" fill="#0a0c10" text-anchor="middle">Outer</text><text x="1088" y="567" font-family="'Inter Variable', Inter, Helvetica, Arial, sans-serif" font-size="44" fill="#0a0c10" text-anchor="middle">Loop</text><line x1="703" y1="540" x2="880" y2="540" stroke="#193363" stroke-width="6" marker-end="url(#arrow10)"/><text x="792" y="510" font-family="'Inter Variable', Inter, Helvetica, Arial, sans-serif" font-size="36" font-weight="800" fill="#585858" text-anchor="middle">Push</text><circle r="9" fill="#26ae60"><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="2.2s" repeatCount="indefinite"/><animateMotion dur="2.2s" repeatCount="indefinite" path="M 709,540 L 876,540"/></circle><circle cx="560" cy="349" r="22" fill="none" stroke="#26ae60" stroke-width="3"><animate attributeName="r" values="22;58" dur="2.6s" begin="0.0s" repeatCount="indefinite" calcMode="spline" keySplines="0.3 0 0.3 1" keyTimes="0;1"/><animate attributeName="opacity" values="0.55;0" dur="2.6s" begin="0.0s" repeatCount="indefinite"/></circle><circle cx="373" cy="537" r="22" fill="none" stroke="#26ae60" stroke-width="3"><animate attributeName="r" values="22;58" dur="2.6s" begin="0.37s" repeatCount="indefinite" calcMode="spline" keySplines="0.3 0 0.3 1" keyTimes="0;1"/><animate attributeName="opacity" values="0.55;0" dur="2.6s" begin="0.37s" repeatCount="indefinite"/></circle><circle cx="429" cy="671" r="22" fill="none" stroke="#26ae60" stroke-width="3"><animate attributeName="r" values="22;58" dur="2.6s" begin="0.74s" repeatCount="indefinite" calcMode="spline" keySplines="0.3 0 0.3 1" keyTimes="0;1"/><animate attributeName="opacity" values="0.55;0" dur="2.6s" begin="0.74s" repeatCount="indefinite"/></circle><circle cx="696" cy="671" r="22" fill="none" stroke="#26ae60" stroke-width="3"><animate attributeName="r" values="22;58" dur="2.6s" begin="1.11s" repeatCount="indefinite" calcMode="spline" keySplines="0.3 0 0.3 1" keyTimes="0;1"/><animate attributeName="opacity" values="0.55;0" dur="2.6s" begin="1.11s" repeatCount="indefinite"/></circle><circle cx="1088" cy="301" r="22" fill="none" stroke="#26ae60" stroke-width="3"><animate attributeName="r" values="22;58" dur="2.6s" begin="1.48s" repeatCount="indefinite" calcMode="spline" keySplines="0.3 0 0.3 1" keyTimes="0;1"/><animate attributeName="opacity" values="0.55;0" dur="2.6s" begin="1.48s" repeatCount="indefinite"/></circle><circle cx="1321" cy="537" r="22" fill="none" stroke="#26ae60" stroke-width="3"><animate attributeName="r" values="22;58" dur="2.6s" begin="1.85s" repeatCount="indefinite" calcMode="spline" keySplines="0.3 0 0.3 1" keyTimes="0;1"/><animate attributeName="opacity" values="0.55;0" dur="2.6s" begin="1.85s" repeatCount="indefinite"/></circle><circle cx="1088" cy="769" r="22" fill="none" stroke="#26ae60" stroke-width="3"><animate attributeName="r" values="22;58" dur="2.6s" begin="2.22s" repeatCount="indefinite" calcMode="spline" keySplines="0.3 0 0.3 1" keyTimes="0;1"/><animate attributeName="opacity" values="0.55;0" dur="2.6s" begin="2.22s" repeatCount="indefinite"/></circle><rect x="537.0" y="332.0" width="46.0" height="34.0" rx="6.0" fill="#193363"/><rect x="546.0" y="340.0" width="28.0" height="18.0" rx="3.0" fill="#26ae60"/><circle cx="560.0" cy="322.0" r="7.0" fill="#193363"/><text x="560" y="291" font-family="'Inter Variable', Inter, Helvetica, Arial, sans-serif" font-size="27" font-weight="700" fill="#585858" text-anchor="middle">Build</text><rect x="350.0" y="520.0" width="46.0" height="34.0" rx="6.0" fill="#193363"/><rect x="359.0" y="528.0" width="28.0" height="18.0" rx="3.0" fill="#26ae60"/><circle cx="373.0" cy="510.0" r="7.0" fill="#193363"/><text x="327" y="543" font-family="'Inter Variable', Inter, Helvetica, Arial, sans-serif" font-size="27" font-weight="700" fill="#585858" text-anchor="end">Code</text><rect x="406.0" y="654.0" width="46.0" height="34.0" rx="6.0" fill="#193363"/><rect x="415.0" y="662.0" width="28.0" height="18.0" rx="3.0" fill="#26ae60"/><circle cx="429.0" cy="644.0" r="7.0" fill="#193363"/><text x="429" y="733" font-family="'Inter Variable', Inter, Helvetica, Arial, sans-serif" font-size="27" font-weight="700" fill="#585858" text-anchor="middle">Open Source</text><rect x="673.0" y="654.0" width="46.0" height="34.0" rx="6.0" fill="#193363"/><rect x="682.0" y="662.0" width="28.0" height="18.0" rx="3.0" fill="#26ae60"/><circle cx="696.0" cy="644.0" r="7.0" fill="#193363"/><text x="696" y="733" font-family="'Inter Variable', Inter, Helvetica, Arial, sans-serif" font-size="27" font-weight="700" fill="#585858" text-anchor="middle">Test</text><rect x="1065.0" y="284.0" width="46.0" height="34.0" rx="6.0" fill="#193363"/><rect x="1074.0" y="292.0" width="28.0" height="18.0" rx="3.0" fill="#26ae60"/><circle cx="1088.0" cy="274.0" r="7.0" fill="#193363"/><text x="1088" y="243" font-family="'Inter Variable', Inter, Helvetica, Arial, sans-serif" font-size="27" font-weight="700" fill="#585858" text-anchor="middle">Integrate</text><rect x="1298.0" y="520.0" width="46.0" height="34.0" rx="6.0" fill="#193363"/><rect x="1307.0" y="528.0" width="28.0" height="18.0" rx="3.0" fill="#26ae60"/><circle cx="1321.0" cy="510.0" r="7.0" fill="#193363"/><text x="1367" y="543" font-family="'Inter Variable', Inter, Helvetica, Arial, sans-serif" font-size="27" font-weight="700" fill="#585858" text-anchor="start">Test</text><rect x="1065.0" y="752.0" width="46.0" height="34.0" rx="6.0" fill="#193363"/><rect x="1074.0" y="760.0" width="28.0" height="18.0" rx="3.0" fill="#26ae60"/><circle cx="1088.0" cy="742.0" r="7.0" fill="#193363"/><text x="1088" y="831" font-family="'Inter Variable', Inter, Helvetica, Arial, sans-serif" font-size="27" font-weight="700" fill="#585858" text-anchor="middle">Deploy</text><g><circle cx="0.0" cy="0.0" r="27.2" fill="url(#halo10)"/><rect x="-18.4" y="-13.6" width="36.8" height="27.2" rx="4.8" fill="#193363"/><rect x="-11.2" y="-7.2" width="22.4" height="14.4" rx="2.4" fill="#26ae60"/><circle cx="0.0" cy="-21.6" r="5.6" fill="#193363"/><animateMotion dur="7.0s" repeatCount="indefinite" rotate="0" calcMode="linear"><mpath xlink:href="#innerOrbit10" href="#innerOrbit10"/></animateMotion></g><g><circle cx="0.0" cy="0.0" r="27.2" fill="url(#halo10)"/><rect x="-18.4" y="-13.6" width="36.8" height="27.2" rx="4.8" fill="#193363"/><rect x="-11.2" y="-7.2" width="22.4" height="14.4" rx="2.4" fill="#26ae60"/><circle cx="0.0" cy="-21.6" r="5.6" fill="#193363"/><animateMotion dur="9.5s" repeatCount="indefinite" rotate="0" calcMode="linear"><mpath xlink:href="#outerOrbit10" href="#outerOrbit10"/></animateMotion></g></svg>
 
 Note: Same map, same inner and outer loops, same push in the middle - but look what changed: every human icon is now an AI agent. That's the whole point. In the agentic workflow, an agent sits at every single stage - code, open source, build, test, integrate, deploy - and so the attack surface is no longer just what you pull. It's every autonomous action, every tool call, every credential those agents touch across the entire road from inner loop to production. That's a lot of green robots and a lot of blast radius - the same failure mode as that 2:47 AM commit, now at every stage. Let me make it concrete - here's an agent turned loose on a build with no guardrails at all.
 
@@ -82,7 +167,7 @@ Note: Same map, same inner and outer loops, same push in the middle - but look w
 
 <img src="assets/slide-11.webp" alt="Agents expand your attack surface automatically — traditional workflow (manual, reviewed) vs agentic workflow (autonomous, no review): the better the agent, the bigger the blast radius" width="1600" height="900" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:fill" />
 
-Note: Traditional attacks targeted developers making conscious choices. Agentic systems automate those choices — an agent can pull and install packages without a human reviewing each step. The attack surface multiplied.
+Note: Here's why this matters. Traditional attacks had to target a developer making a conscious choice — someone had to decide to pull that package, run that script. Agentic systems automate the choosing. The agent pulls and installs without a human reviewing each step, so there's no pause where a person goes "wait, that looks off." And here's the uncomfortable part: the better the agent gets, the more it does on its own — which means the bigger the blast radius. Capability and risk scale together.
 
 ---
 
@@ -90,7 +175,7 @@ Note: Traditional attacks targeted developers making conscious choices. Agentic 
 
 <img src="assets/slide-12.webp" alt="Agents expand your attack surface automatically — traditional versus agentic workflow, side by side" width="1600" height="900" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:fill" />
 
-Note: Traditional attacks targeted developers making conscious choices. Agentic systems automate those choices — an agent can pull and install packages without a human reviewing each step. The attack surface multiplied.
+Note: Same idea, side by side. On the left, the traditional workflow: manual, reviewed, a human gate at every step. On the right, the agentic one: autonomous, no review, the agent acting end to end. It's the same work getting done — but every one of those review gates on the left is just gone on the right. That's not a small tweak to the threat model; it's a different threat model. So the rest of this talk is about putting one gate back — in a place the agent can't remove.
 
 ---
 
@@ -107,6 +192,14 @@ Note: And this isn't the future. It's already in your pipeline. Agents pull depe
 <img src="assets/slide-14.webp" alt="The ungoverned agent — on your host with full permissions it picks FROM node:20 with 6 High CVEs, 431 packages, no SBOM, root user" width="1600" height="900" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:fill" />
 
 Note: Here's what that looks like with no guardrails. The agent on your host, full permissions, asked to containerize the app. It reaches for the first base image it's ever seen — FROM node:20 — and ships it. Look at the scorecard: six High CVEs, 431 packages it pulled in without asking, no SBOM so nobody can tell what's actually in there, and it's running as root. Nothing here is malicious. The agent did exactly what you asked. It just had no reason to pick anything better, and nothing stopping it. Hold that scorecard in your head — six Highs, 431 packages, root — because we're going to run this exact prompt again later inside a sandbox and compare.
+
+---
+
+<!-- chrome: false -->
+
+<img src="assets/clone-the-repo.webp" alt="Set up — clone the Product Catalog showcase repo, confirm there's no Dockerfile or Compose file, ask the agent to containerize it, then docker scout quickview: N critical and NN high CVEs" width="1600" height="900" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:fill" />
+
+Note: Here's the setup for the demo, so you can follow along. Clone the Product Catalog showcase repo, and notice what's not there: no Dockerfile, no Compose file. Then ask the agent to containerize it for production, and scan whatever it builds with docker scout quickview. On the ungoverned run that scorecard comes back ugly — a stack of Critical and High CVEs. That's our baseline, and it's the number we're going to beat later inside a sandbox.
 
 ---
 
@@ -184,6 +277,14 @@ Note: Here's the mental model, and if you remember one slide, make it this one. 
 
 <!-- chrome: false -->
 
+<iframe src="labs/trust-the-box-slides/assets/the-box.html" title="The Box — what the agent can reach" style="position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff"></iframe>
+
+Note: This one's interactive — poke at it while I talk. On the left, "No sandbox": the agent is sitting on your computer with everything you own in reach — your project, your photos, your passwords, your documents. Ask it to do something and watch what it can touch. Now flip to "In a sandbox" and run the same request: it only ever sees the project folder. Same agent, same ask, completely different blast radius. That's Contain, as a toy you can click.
+
+---
+
+<!-- chrome: false -->
+
 <img src="assets/slide-24.webp" alt="Four pillars structure the rest of the session — Contain, Control, Choice, Capacity" width="1600" height="900" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:fill" />
 
 Note: We'll organize the rest of the talk around four pillars. Contain is the boundary itself: the microVM and the guarded network. Control is where you decide where that boundary sits, and where organizations can layer on governance. Choice is about choosing what goes inside, using kits. And Capacity is about making that same sandbox show up for every developer and every run. The first two give you the trusted boundary, the third is your choice, and the fourth is sharing.
@@ -248,6 +349,14 @@ Note: As a developer, you pick how tight the network is. There are three profile
 
 <!-- chrome: false -->
 
+<iframe src="labs/trust-the-box-slides/assets/the-door.html" title="The Door — one way out, with a guard" style="position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff"></iframe>
+
+Note: And here's the proxy, interactive. The agent's inside the sandbox, and the only way to the internet is through one door with a guard. The guard checks an allow-list — the AI model and GitHub are on it, the sketchy site isn't — and every attempt, allowed or denied, shows up in sbx policy log. The key detail: you author that list from outside the box. The agent is inside; it can't edit its own guard. Try sending it somewhere that's not on the list and watch the door hold.
+
+---
+
+<!-- chrome: false -->
+
 <img src="assets/slide-32.webp" alt="Organizations add governance on top — central policy, audit logs, and approved agents and kits enforced across every sandbox, over the always-on Contain layer" width="1600" height="900" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:fill" />
 
 Note: Now, if you're an organization, you probably want more than every developer doing their own thing. That's where AI Governance comes in. Think of it as layers. At the bottom, Contain is always on. MicroVM, proxy, credential injection, no matter what. In the middle, developers set their local policy. And on top, the organization can set central policy, collect audit logs, and say which agents and kits are approved, enforced across every sandbox. So the security team gets visibility and guardrails, and developers still get to move fast.
@@ -306,7 +415,7 @@ Note: Quick word on how the agent actually uses outside tools, because this sets
 
 <img src="assets/slide-39.webp" alt="Agent with a sandbox — the DHI MCP server serves signed tools only; FROM dhi.io/node gives 0 CVEs, 211 packages, SBOM attached, signed, non-root" width="1600" height="900" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:fill" />
 
-Note: Now the same prompt as our ungoverned agent: containerize the app. But this time it runs inside a sandbox, with its own daemon and its own network. Before writing the Dockerfile, the agent asks the DHI MCP server for a hardened base, and it picks dhi.io/node. The result: 211 packages, zero critical, zero high, zero medium, zero low CVEs. SBOM attached, signed, non-root. Same agent. Same prompt. Different environment.
+Note: Same prompt as our ungoverned agent — containerize the app — but this time it runs inside a sandbox, with its own daemon and its own network. The one thing that changed: before it writes a single FROM line, it asks the DHI MCP server for a hardened base, and it gets back dhi.io/node. Read the scorecard out loud: 211 packages, and zero across the board — zero critical, zero high, zero medium, zero low. SBOM attached, signed, running non-root. Same agent, same prompt, just a better tool within reach.
 
 ---
 
@@ -314,7 +423,7 @@ Note: Now the same prompt as our ungoverned agent: containerize the app. But thi
 
 <img src="assets/slide-40.webp" alt="A governed agent — the MCP gateway and catalog, a network proxy with policy and secrets, and filesystem rules, serving the Product Catalog with a 0-CVE base" width="1600" height="900" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:fill" />
 
-Note: Now the same prompt as our ungoverned agent: containerize the app. But this time it runs inside a sandbox, with its own daemon and its own network. Before writing the Dockerfile, the agent asks the DHI MCP server for a hardened base, and it picks dhi.io/node. The result: 211 packages, zero critical, zero high, zero medium, zero low CVEs. SBOM attached, signed, non-root. Same agent. Same prompt. Different environment.
+Note: Now zoom out from that one result to the whole governed agent. Three things surround it. On one side, the MCP gateway and its catalog — the single door to every external tool, including the DHI lookup we just used. Underneath, the network proxy carrying policy and secrets, so credentials get added on the way out and never sit inside the box. And around the workspace, filesystem rules that keep the agent to the project folder. That zero-CVE Product Catalog image isn't luck — it's what falls out when all three are in place at once.
 
 ---
 
@@ -322,7 +431,7 @@ Note: Now the same prompt as our ungoverned agent: containerize the app. But thi
 
 <img src="assets/slide-41.webp" alt="A governed agent — MCP gateway, network proxy, and filesystem policy around the Product Catalog with a 0-CVE base" width="1600" height="900" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:fill" />
 
-Note: Now the same prompt as our ungoverned agent: containerize the app. But this time it runs inside a sandbox, with its own daemon and its own network. Before writing the Dockerfile, the agent asks the DHI MCP server for a hardened base, and it picks dhi.io/node. The result: 211 packages, zero critical, zero high, zero medium, zero low CVEs. SBOM attached, signed, non-root. Same agent. Same prompt. Different environment.
+Note: Same picture, stripped to the three pieces that matter: the MCP gateway for tools, the network proxy for policy and secrets, and filesystem policy for the workspace — all wrapped around the Product Catalog with its zero-CVE base. This is the shape of a governed agent. Everything we've built in the Choice section lives in one of those three boxes. Hold that shape, because next we look at how the gateway actually enforces what the agent is allowed to do.
 
 ---
 
@@ -330,7 +439,7 @@ Note: Now the same prompt as our ungoverned agent: containerize the app. But thi
 
 <img src="assets/slide-42.webp" alt="The agent talks to one gateway, never to servers directly — mcp-gateway is one governed endpoint; every tool call flows through one chokepoint where policy and audit apply" width="1600" height="900" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:fill" />
 
-Note: The one idea everything hangs onThe agent never talks to those tool-servers directly. It talks to one gateway, and the gateway talks to the servers. That single chokepoint is where authorization, credentials, and audit happen. Every command in the runbook is really just "set up that gateway path" or "manage what's behind it."
+Note: The one idea everything hangs on: the agent never talks to those tool-servers directly. It talks to one gateway, and the gateway talks to the servers. That single chokepoint is where authorization, credentials, and audit happen. Every command in the runbook is really just "set up that gateway path" or "manage what's behind it."
 
 ---
 
@@ -354,7 +463,7 @@ Note: And here's what that policy actually says. It's a default-deny allow-list,
 
 <img src="assets/slide-45.webp" alt="One feature: agents in a sandbox using external tools safely — four practical questions about MCP servers: what's supported, how the sandbox connects, how you register them, how credentials are managed" width="1600" height="900" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:fill" />
 
-Note: All about runbook….It's the operations guide for one feature: letting an AI agent running inside a Docker sandbox use MCP servers (external tools — Notion, Stripe, GitHub, a browser, etc.) safely. It answers four practical questions: what tool-servers are supported, how you register them, how the sandbox connects to them, and how you manage their credentials. That's the whole scope.
+Note: This is really a runbook — the operations guide for one feature: letting an AI agent running inside a Docker sandbox use MCP servers (external tools — Notion, Stripe, GitHub, a browser, etc.) safely. It answers four practical questions: what tool-servers are supported, how you register them, how the sandbox connects to them, and how you manage their credentials. That's the whole scope.
 
 ---
 
