@@ -151,6 +151,41 @@ Note: So this is the app we'll be securing all the way down that dev-to-prod roa
 
 <img src="assets/slide-09.webp" alt="The traditional workflow — a human writes, reviews and ships at every stage of the inner and outer loop; the attack surface is only what you choose to pull" width="1600" height="900" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:fill" />
 
+<!-- Traditional-workflow motion: the blue twin of the agentic slide that
+     follows. Overlays the baked slide-09.webp (people drawn in, same inner/outer
+     loop map as slide 10) — dashed rings rotate, a Push dot crosses, a ring
+     pulses at each human stage, and two people orbit the loops. Blue (#1d63ed,
+     humans) vs the next slide's green (#26ae60, agents). Coordinates match
+     slide-10's geometry and the baked person positions (grid-verified). -->
+<svg data-anim="slide-09" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;pointer-events:none">
+  <defs>
+    <radialGradient id="halo09" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1d63ed" stop-opacity="0.55"/>
+      <stop offset="55%" stop-color="#1d63ed" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#1d63ed" stop-opacity="0"/>
+    </radialGradient>
+    <path id="innerOrbit09" d="M 555,380 A 160,160 0 1,1 555,700 A 160,160 0 1,1 555,380" fill="none"/>
+    <path id="outerOrbit09" d="M 1088,325 A 210,210 0 1,1 1088,745 A 210,210 0 1,1 1088,325" fill="none"/>
+    <g id="person09">
+      <circle cx="0" cy="0" r="27" fill="url(#halo09)"/>
+      <circle cx="0" cy="-13" r="8.5" fill="#193363"/>
+      <path d="M -16,17 a 16,19 0 0 1 32,0 Z" fill="#193363"/>
+    </g>
+  </defs>
+  <circle cx="555" cy="540" r="160" fill="none" stroke="#193363" stroke-opacity="0.12" stroke-width="2" stroke-dasharray="2 14" stroke-linecap="round"><animateTransform attributeName="transform" type="rotate" from="0 555 540" to="360 555 540" dur="26s" repeatCount="indefinite"/></circle>
+  <circle cx="1088" cy="535" r="210" fill="none" stroke="#193363" stroke-opacity="0.12" stroke-width="2" stroke-dasharray="2 14" stroke-linecap="round"><animateTransform attributeName="transform" type="rotate" from="0 1088 535" to="-360 1088 535" dur="34s" repeatCount="indefinite"/></circle>
+  <circle r="9" fill="#1d63ed"><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="2.2s" repeatCount="indefinite"/><animateMotion dur="2.2s" repeatCount="indefinite" path="M 709,540 L 876,540"/></circle>
+  <circle cx="560" cy="349" r="22" fill="none" stroke="#1d63ed" stroke-width="3"><animate attributeName="r" values="22;58" dur="2.6s" begin="0.0s" repeatCount="indefinite" calcMode="spline" keySplines="0.3 0 0.3 1" keyTimes="0;1"/><animate attributeName="opacity" values="0.55;0" dur="2.6s" begin="0.0s" repeatCount="indefinite"/></circle>
+  <circle cx="373" cy="537" r="22" fill="none" stroke="#1d63ed" stroke-width="3"><animate attributeName="r" values="22;58" dur="2.6s" begin="0.37s" repeatCount="indefinite" calcMode="spline" keySplines="0.3 0 0.3 1" keyTimes="0;1"/><animate attributeName="opacity" values="0.55;0" dur="2.6s" begin="0.37s" repeatCount="indefinite"/></circle>
+  <circle cx="429" cy="671" r="22" fill="none" stroke="#1d63ed" stroke-width="3"><animate attributeName="r" values="22;58" dur="2.6s" begin="0.74s" repeatCount="indefinite" calcMode="spline" keySplines="0.3 0 0.3 1" keyTimes="0;1"/><animate attributeName="opacity" values="0.55;0" dur="2.6s" begin="0.74s" repeatCount="indefinite"/></circle>
+  <circle cx="696" cy="671" r="22" fill="none" stroke="#1d63ed" stroke-width="3"><animate attributeName="r" values="22;58" dur="2.6s" begin="1.11s" repeatCount="indefinite" calcMode="spline" keySplines="0.3 0 0.3 1" keyTimes="0;1"/><animate attributeName="opacity" values="0.55;0" dur="2.6s" begin="1.11s" repeatCount="indefinite"/></circle>
+  <circle cx="1088" cy="301" r="22" fill="none" stroke="#1d63ed" stroke-width="3"><animate attributeName="r" values="22;58" dur="2.6s" begin="1.48s" repeatCount="indefinite" calcMode="spline" keySplines="0.3 0 0.3 1" keyTimes="0;1"/><animate attributeName="opacity" values="0.55;0" dur="2.6s" begin="1.48s" repeatCount="indefinite"/></circle>
+  <circle cx="1321" cy="537" r="22" fill="none" stroke="#1d63ed" stroke-width="3"><animate attributeName="r" values="22;58" dur="2.6s" begin="1.85s" repeatCount="indefinite" calcMode="spline" keySplines="0.3 0 0.3 1" keyTimes="0;1"/><animate attributeName="opacity" values="0.55;0" dur="2.6s" begin="1.85s" repeatCount="indefinite"/></circle>
+  <circle cx="1088" cy="769" r="22" fill="none" stroke="#1d63ed" stroke-width="3"><animate attributeName="r" values="22;58" dur="2.6s" begin="2.22s" repeatCount="indefinite" calcMode="spline" keySplines="0.3 0 0.3 1" keyTimes="0;1"/><animate attributeName="opacity" values="0.55;0" dur="2.6s" begin="2.22s" repeatCount="indefinite"/></circle>
+  <use href="#person09"><animateMotion dur="7s" repeatCount="indefinite" rotate="0" calcMode="linear"><mpath xlink:href="#innerOrbit09" href="#innerOrbit09"/></animateMotion></use>
+  <use href="#person09"><animateMotion dur="9.5s" repeatCount="indefinite" rotate="0" calcMode="linear"><mpath xlink:href="#outerOrbit09" href="#outerOrbit09"/></animateMotion></use>
+</svg>
+
 Note: Here's the world we grew up in - the traditional workflow. A human writes, reviews, and ships at every stage, and the key line is at the top: the attack surface is only what you choose to pull. You've got the inner loop on the left - code, open source, build, test - the fast cycle on your own machine, and every icon around it is a person. Then you push, and it flows into the outer loop on the right - integrate, test, deploy - again, humans at every point. It's a chain of deliberate human decisions from left to right. Hold this picture in your head, because the next slide keeps the exact same map and swaps out just one thing.
 
 ---
@@ -509,7 +544,11 @@ Note: And the secret to scale is reproducibility. One developer setting things u
 
 <!-- chrome: false -->
 
-<img src="assets/slide-51.webp" alt="An environment file describes the whole sandbox — sbxenv.yaml with agent, workspace, kits and resources, committed to the repo and started with sbx env run" width="1600" height="900" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:fill" />
+<!-- Rebuilt as a native HTML slide: the baked slide-51.webp rendered the
+     sbxenv.yaml with every line run together and no indentation. This iframe
+     shows the schema correctly indented in a real <pre> block (same pattern as
+     the-box.html / the-door.html). -->
+<iframe src="labs/trust-the-box-slides/assets/env-file.html" title="An environment file describes the whole sandbox — sbxenv.yaml with agent, workspace, kits and resources" style="position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff"></iframe>
 
 Note: That file is the sandbox environment file, sbxenv.yaml. It's pretty small. You say which agent to run, which folder is the workspace, which kits to pull in, and how much CPU and memory to give it. Notice what's not in here: no network rules. That stuff comes with the kits. Then you run sbx env run, it shows you a plan, you approve it, and you're in. Heads up, this is experimental right now, so the format may still change.
 
